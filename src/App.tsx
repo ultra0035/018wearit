@@ -406,6 +406,7 @@ export default function App() {
         onOpenCart={() => setIsCartOpen(true)}
         onOpenSearch={() => setIsSearchOpen(true)}
         onOpenPhotoUpload={() => setIsPhotoUploadOpen(true)}
+        onOpenAdmin={() => setIsAdminOpen(true)}
         currentTheme={theme}
         onToggleTheme={handleToggleTheme}
         onSelectCategory={(cat) => {

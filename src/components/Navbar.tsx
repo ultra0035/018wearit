@@ -11,7 +11,8 @@ import {
   Menu,
   X,
   Sun,
-  Moon
+  Moon,
+  Lock
 } from 'lucide-react';
 import { ProductCategory, ThemeMode } from '../types';
 
@@ -24,6 +25,7 @@ interface NavbarProps {
   onOpenWishlist: () => void;
   onOpenSearch: () => void;
   onOpenPhotoUpload: () => void;
+  onOpenAdmin?: () => void;
   currentTheme: ThemeMode;
   onToggleTheme: () => void;
 }
@@ -37,6 +39,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenWishlist,
   onOpenSearch,
   onOpenPhotoUpload,
+  onOpenAdmin,
   currentTheme,
   onToggleTheme
 }) => {
@@ -179,6 +182,19 @@ export const Navbar: React.FC<NavbarProps> = ({
               <span className="hidden sm:inline">Wear 018</span>
             </button>
 
+            {/* Admin Stock Portal Trigger Button in Header */}
+            {onOpenAdmin && (
+              <button
+                id="nav-admin-btn"
+                onClick={onOpenAdmin}
+                className="hidden xl:flex items-center gap-1.5 px-3 py-1.5 bg-[#17181c] hover:bg-[#22242a] text-zinc-300 hover:text-[#ff5500] rounded-lg border border-[#2a2c33] hover:border-[#ff5500]/40 text-xs font-semibold transition-all"
+                title="Admin & Stock Portal"
+              >
+                <Lock className="w-3.5 h-3.5 text-[#ff5500]" />
+                <span>Admin</span>
+              </button>
+            )}
+
             {/* Dark Mode / Light Mode Toggle Button (Requirement 1) */}
             <button
               id="theme-toggle-btn"
@@ -279,6 +295,22 @@ export const Navbar: React.FC<NavbarProps> = ({
               </span>
               <Sparkles className="w-3.5 h-3.5" />
             </button>
+
+            {onOpenAdmin && (
+              <button
+                onClick={() => {
+                  onOpenAdmin();
+                  setMobileMenuOpen(false);
+                }}
+                className="w-full flex items-center justify-between px-3 py-2 bg-zinc-800/80 hover:bg-zinc-800 text-zinc-200 rounded-lg text-xs font-medium"
+              >
+                <span className="flex items-center gap-2">
+                  <Lock className="w-4 h-4 text-[#ff5500]" />
+                  <span>Admin & Stock Portal</span>
+                </span>
+                <span className="text-[10px] text-zinc-400 font-mono">018 Studio</span>
+              </button>
+            )}
           </div>
         </div>
       )}

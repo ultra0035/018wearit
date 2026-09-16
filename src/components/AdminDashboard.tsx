@@ -3,7 +3,7 @@ import {
   LayoutDashboard,
   Package,
   ShoppingBag,
-  Users,
+  Camera,
   Database,
   Settings,
   X,
@@ -14,7 +14,6 @@ import {
   AlertTriangle,
   TrendingUp,
   DollarSign,
-  Camera,
   Upload,
   Copy,
   Download,
@@ -23,19 +22,20 @@ import {
   Sun,
   Moon,
   Trash2,
-  Edit,
   Eye,
   ArrowUpRight,
   ShieldCheck,
   Phone,
   MapPin,
-  Clock,
   Sparkles,
   ChevronRight,
-  Filter,
   Check,
   SlidersHorizontal,
-  Server
+  Server,
+  Layers,
+  Clock,
+  User,
+  Mail
 } from 'lucide-react';
 import {
   AreaChart,
@@ -81,6 +81,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onToggleTheme
 }) => {
   if (!isOpen) return null;
+
+  const isLight = currentTheme === 'light';
 
   const [activePage, setActivePage] = useState<AdminPage>('dashboard');
   const [searchQuery, setSearchQuery] = useState('');
@@ -191,7 +193,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         videoRef.current.play();
       }
     } catch (err) {
-      alert('Camera access failed. Please select from files instead.');
+      alert('Camera access failed. Please select an image file instead.');
       setCameraActive(false);
     }
   };
@@ -238,15 +240,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         description: newDescription.trim() || 'Engineered in Klerksdorp, North West.',
         stockQuantity: Number(newStock),
         tag: newTag,
-        image: newImage || 'https://images.unsplash.com/photo-1588850561407-ed78c282e89b?auto=format&fit=crop&w=800&q=80',
+        image: newImage || 'https://images.unsplash.com/photo-1556905055-8f358a7a47b2?auto=format&fit=crop&w=800&q=80',
+        inStock: Number(newStock) > 0,
         sizes: ['S', 'M', 'L', 'XL'],
         colors: ['Jet Black', '018 Orange'],
-        features: ['Handcrafted in North West', 'Precision Double-Rib Weave']
+        features: ['Engineered in Klerksdorp, North West', '100% Local Knitwear Heritage']
       });
 
+      // Reset
       setNewTitle('');
-      setNewImage('');
+      setNewPrice('850');
+      setNewOriginalPrice('1100');
+      setNewStock('15');
       setNewDescription('');
+      setNewImage('');
       setIsAddProductOpen(false);
     } catch (err) {
       alert('Failed to save product');
@@ -259,7 +266,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const handleDownloadSql = async () => {
     try {
       const res = await fetch('/api/supabase/sql');
-      const sqlContent = res.ok ? await res.text() : `-- Run /supabase/schema.sql`;
+      const sqlContent = res.ok ? await res.text() : `-- 018 Bokone Schema\n-- View in /supabase/schema.sql`;
       const blob = new Blob([sqlContent], { type: 'text/plain;charset=utf-8' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -274,18 +281,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   // Filtered Products
   const filteredProducts = useMemo(() => {
-    return products.filter(p => {
+    return products.filter((p) => {
       const matchesCategory = selectedCategoryFilter === 'All' || p.category === selectedCategoryFilter;
       const matchesSearch = !searchQuery || 
         p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.sku.toLowerCase().includes(searchQuery.toLowerCase());
+        p.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (p.sku && p.sku.toLowerCase().includes(searchQuery.toLowerCase()));
       return matchesCategory && matchesSearch;
     });
   }, [products, selectedCategoryFilter, searchQuery]);
 
   // Filtered Orders
   const filteredOrders = useMemo(() => {
-    return orders.filter(o => {
+    return orders.filter((o) => {
       const matchesStatus = selectedOrderStatusFilter === 'all' || o.status === selectedOrderStatusFilter;
       const matchesSearch = !searchQuery ||
         o.orderNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -298,25 +306,25 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex bg-black/80 backdrop-blur-md overflow-hidden animate-fadeIn text-left">
       {/* Container Card */}
-      <div className="relative w-full h-full max-w-[100vw] bg-[#0d0e12] flex flex-col md:flex-row overflow-hidden">
+      <div className={`relative w-full h-full max-w-[100vw] ${isLight ? 'bg-[#f8fafc] text-slate-900' : 'bg-[#0d0e12] text-zinc-100'} flex flex-col md:flex-row overflow-hidden`}>
         
         {/* ============================================================ */}
         {/* LEFT SIDEBAR NAVIGATION */}
         {/* ============================================================ */}
         <aside
-          className={`fixed md:relative z-30 inset-y-0 left-0 w-64 bg-[#121318] border-r border-[#22242e] flex flex-col justify-between transition-transform duration-300 md:translate-x-0 ${
+          className={`fixed md:relative z-30 inset-y-0 left-0 w-64 ${isLight ? 'bg-white border-r border-slate-200 shadow-lg md:shadow-none' : 'bg-[#121318] border-r border-[#22242e]'} flex flex-col justify-between transition-transform duration-300 md:translate-x-0 ${
             mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'
           }`}
         >
           {/* Top Brand Header */}
           <div>
-            <div className="p-5 border-b border-[#21232d] flex items-center justify-between">
+            <div className={`p-5 border-b ${isLight ? 'border-slate-200' : 'border-[#21232d]'} flex items-center justify-between`}>
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-[#ff5500] text-black font-black flex items-center justify-center text-sm shadow-md shadow-[#ff5500]/20">
                   018
                 </div>
                 <div>
-                  <h2 className="text-sm font-black text-white uppercase font-display tracking-tight leading-tight">
+                  <h2 className={`text-sm font-black ${isLight ? 'text-slate-900' : 'text-white'} uppercase font-display tracking-tight leading-tight`}>
                     018 BOKONE
                   </h2>
                   <span className="text-[10px] text-[#ff5500] font-mono font-bold tracking-wider uppercase">
@@ -326,7 +334,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               </div>
               <button
                 onClick={() => setMobileSidebarOpen(false)}
-                className="md:hidden p-1.5 text-zinc-400 hover:text-white"
+                className={`md:hidden p-1.5 ${isLight ? 'text-slate-500 hover:text-slate-900' : 'text-zinc-400 hover:text-white'}`}
               >
                 <X className="w-5 h-5" />
               </button>
@@ -342,7 +350,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-semibold transition-all ${
                   activePage === 'dashboard'
                     ? 'bg-[#ff5500] text-black shadow-md shadow-[#ff5500]/25'
-                    : 'text-zinc-400 hover:text-white hover:bg-[#1a1b22]'
+                    : isLight ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-100' : 'text-zinc-400 hover:text-white hover:bg-[#1a1b22]'
                 }`}
               >
                 <div className="flex items-center gap-2.5">
@@ -359,7 +367,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-semibold transition-all ${
                   activePage === 'products'
                     ? 'bg-[#ff5500] text-black shadow-md shadow-[#ff5500]/25'
-                    : 'text-zinc-400 hover:text-white hover:bg-[#1a1b22]'
+                    : isLight ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-100' : 'text-zinc-400 hover:text-white hover:bg-[#1a1b22]'
                 }`}
               >
                 <div className="flex items-center gap-2.5">
@@ -368,7 +376,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 </div>
                 <span
                   className={`text-[10px] px-2 py-0.5 rounded-full font-mono font-bold ${
-                    activePage === 'products' ? 'bg-black/30 text-black' : 'bg-[#1e2029] text-zinc-300'
+                    activePage === 'products' ? 'bg-black/30 text-black' : isLight ? 'bg-slate-100 text-slate-700' : 'bg-[#1e2029] text-zinc-300'
                   }`}
                 >
                   {products.length}
@@ -383,7 +391,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-semibold transition-all ${
                   activePage === 'orders'
                     ? 'bg-[#ff5500] text-black shadow-md shadow-[#ff5500]/25'
-                    : 'text-zinc-400 hover:text-white hover:bg-[#1a1b22]'
+                    : isLight ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-100' : 'text-zinc-400 hover:text-white hover:bg-[#1a1b22]'
                 }`}
               >
                 <div className="flex items-center gap-2.5">
@@ -393,7 +401,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 {pendingShipmentCount > 0 && (
                   <span
                     className={`text-[10px] px-2 py-0.5 rounded-full font-mono font-bold ${
-                      activePage === 'orders' ? 'bg-black/30 text-black' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                      activePage === 'orders' ? 'bg-black/30 text-black' : 'bg-emerald-500/20 text-emerald-600 border border-emerald-500/30'
                     }`}
                   >
                     {pendingShipmentCount}
@@ -409,7 +417,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-semibold transition-all ${
                   activePage === 'community'
                     ? 'bg-[#ff5500] text-black shadow-md shadow-[#ff5500]/25'
-                    : 'text-zinc-400 hover:text-white hover:bg-[#1a1b22]'
+                    : isLight ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-100' : 'text-zinc-400 hover:text-white hover:bg-[#1a1b22]'
                 }`}
               >
                 <div className="flex items-center gap-2.5">
@@ -418,7 +426,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 </div>
                 <span
                   className={`text-[10px] px-2 py-0.5 rounded-full font-mono font-bold ${
-                    activePage === 'community' ? 'bg-black/30 text-black' : 'bg-[#1e2029] text-zinc-300'
+                    activePage === 'community' ? 'bg-black/30 text-black' : isLight ? 'bg-slate-100 text-slate-700' : 'bg-[#1e2029] text-zinc-300'
                   }`}
                 >
                   {communityPhotos.length}
@@ -433,7 +441,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-semibold transition-all ${
                   activePage === 'database'
                     ? 'bg-[#ff5500] text-black shadow-md shadow-[#ff5500]/25'
-                    : 'text-zinc-400 hover:text-white hover:bg-[#1a1b22]'
+                    : isLight ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-100' : 'text-zinc-400 hover:text-white hover:bg-[#1a1b22]'
                 }`}
               >
                 <div className="flex items-center gap-2.5">
@@ -455,7 +463,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-semibold transition-all ${
                   activePage === 'settings'
                     ? 'bg-[#ff5500] text-black shadow-md shadow-[#ff5500]/25'
-                    : 'text-zinc-400 hover:text-white hover:bg-[#1a1b22]'
+                    : isLight ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-100' : 'text-zinc-400 hover:text-white hover:bg-[#1a1b22]'
                 }`}
               >
                 <div className="flex items-center gap-2.5">
@@ -467,18 +475,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </div>
 
           {/* Bottom Sidebar Info & Theme Switcher */}
-          <div className="p-3 border-t border-[#21232d] space-y-2 text-xs">
-            <div className="p-3 bg-[#171820] rounded-xl border border-[#262835] flex items-center justify-between">
+          <div className={`p-3 border-t ${isLight ? 'border-slate-200' : 'border-[#21232d]'} space-y-2 text-xs`}>
+            <div className={`p-3 ${isLight ? 'bg-slate-50 border-slate-200' : 'bg-[#171820] border-[#262835]'} rounded-xl border flex items-center justify-between`}>
               <div>
-                <span className="text-[10px] text-zinc-400 block font-mono">Database Status</span>
-                <span className={`text-xs font-bold ${supabaseStatus.connected ? 'text-emerald-400' : 'text-amber-400'}`}>
-                  {supabaseStatus.connected ? 'Supabase Live' : 'Memory Fallback'}
+                <span className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-zinc-400'} block font-mono`}>Database Status</span>
+                <span className={`text-xs font-bold ${supabaseStatus.connected ? 'text-emerald-500' : 'text-amber-500'}`}>
+                  {supabaseStatus.connected ? 'Supabase Live' : 'Active (Local)'}
                 </span>
               </div>
               <button
                 onClick={fetchDbStatus}
                 disabled={checkingDb}
-                className="p-1.5 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors"
+                className={`p-1.5 ${isLight ? 'text-slate-500 hover:text-slate-900 hover:bg-slate-200' : 'text-zinc-400 hover:text-white hover:bg-zinc-800'} rounded-lg transition-colors`}
                 title="Refresh DB status"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${checkingDb ? 'animate-spin text-[#ff5500]' : ''}`} />
@@ -488,17 +496,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             {/* Light / Dark Mode Toggle in Sidebar */}
             <button
               onClick={onToggleTheme}
-              className="w-full flex items-center justify-between p-2.5 bg-[#171820] hover:bg-[#20222c] rounded-xl border border-[#262835] text-zinc-300 font-medium transition-colors"
+              className={`w-full flex items-center justify-between p-2.5 ${isLight ? 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700' : 'bg-[#171820] hover:bg-[#20222c] border-[#262835] text-zinc-300'} rounded-xl border font-medium transition-colors`}
             >
               <div className="flex items-center gap-2">
                 {currentTheme === 'dark' ? (
                   <Sun className="w-4 h-4 text-amber-400" />
                 ) : (
-                  <Moon className="w-4 h-4 text-indigo-400" />
+                  <Moon className="w-4 h-4 text-indigo-500" />
                 )}
-                <span>{currentTheme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
+                <span>{currentTheme === 'dark' ? 'Switch to Light' : 'Switch to Dark'}</span>
               </div>
-              <span className="text-[10px] bg-black/40 px-2 py-0.5 rounded text-zinc-400 uppercase font-mono">
+              <span className={`text-[10px] ${isLight ? 'bg-slate-200 text-slate-700' : 'bg-black/40 text-zinc-400'} px-2 py-0.5 rounded uppercase font-mono`}>
                 {currentTheme}
               </span>
             </button>
@@ -506,7 +514,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             {/* Close / Return to Storefront */}
             <button
               onClick={onClose}
-              className="w-full py-2 bg-[#20222a] hover:bg-[#2a2c38] text-zinc-300 hover:text-white font-bold rounded-xl text-center transition-colors flex items-center justify-center gap-1.5"
+              className={`w-full py-2 ${isLight ? 'bg-slate-100 hover:bg-slate-200 text-slate-800' : 'bg-[#20222a] hover:bg-[#2a2c38] text-zinc-300 hover:text-white'} font-bold rounded-xl text-center transition-colors flex items-center justify-center gap-1.5`}
             >
               <span>Back to Storefront</span>
               <ArrowUpRight className="w-3.5 h-3.5 text-[#ff5500]" />
@@ -517,27 +525,27 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         {/* ============================================================ */}
         {/* MAIN CONTENT AREA */}
         {/* ============================================================ */}
-        <div className="flex-1 flex flex-col h-full overflow-hidden bg-[#0c0d10]">
+        <div className={`flex-1 flex flex-col h-full overflow-hidden ${isLight ? 'bg-[#f8fafc]' : 'bg-[#0c0d10]'}`}>
           
           {/* Top Header Bar */}
-          <header className="h-16 px-4 sm:px-6 bg-[#121318] border-b border-[#21232d] flex items-center justify-between gap-4 flex-shrink-0">
+          <header className={`h-16 px-4 sm:px-6 ${isLight ? 'bg-white border-b border-slate-200 shadow-sm' : 'bg-[#121318] border-b border-[#21232d]'} flex items-center justify-between gap-4 flex-shrink-0`}>
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setMobileSidebarOpen(true)}
-                className="md:hidden p-2 text-zinc-400 hover:text-white bg-[#1a1b22] rounded-lg"
+                className={`md:hidden p-2 ${isLight ? 'text-slate-600 bg-slate-100' : 'text-zinc-400 hover:text-white bg-[#1a1b22]'} rounded-lg`}
               >
                 <SlidersHorizontal className="w-5 h-5" />
               </button>
               <div>
-                <h1 className="text-base font-black text-white uppercase font-display tracking-tight flex items-center gap-2">
+                <h1 className={`text-base font-black ${isLight ? 'text-slate-900' : 'text-white'} uppercase font-display tracking-tight flex items-center gap-2`}>
                   <span>{activePage === 'dashboard' ? 'Executive Store Overview' : activePage.toUpperCase()}</span>
                   {supabaseStatus.connected && (
-                    <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full font-mono">
-                      <CheckCircle2 className="w-3 h-3" /> Live
+                    <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 rounded-full font-mono">
+                      <CheckCircle2 className="w-3 h-3" /> Live DB
                     </span>
                   )}
                 </h1>
-                <p className="text-[11px] text-zinc-400 hidden sm:block">
+                <p className={`text-[11px] ${isLight ? 'text-slate-500' : 'text-zinc-400'} hidden sm:block`}>
                   Klerksdorp Studio Operations & Logistics • 018 Bokone Bophirima
                 </p>
               </div>
@@ -547,13 +555,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             <div className="flex items-center gap-2 sm:gap-3">
               {/* Quick Search */}
               <div className="relative hidden sm:block w-48 lg:w-64">
-                <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <Search className={`w-3.5 h-3.5 ${isLight ? 'text-slate-400' : 'text-zinc-400'} absolute left-3 top-1/2 -translate-y-1/2`} />
                 <input
                   type="text"
                   placeholder="Search SKUs, orders..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-[#181920] border border-[#272935] text-white text-xs pl-8 pr-3 py-1.5 rounded-xl focus:outline-none focus:border-[#ff5500]"
+                  className={`w-full ${isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-[#181920] border-[#272935] text-white'} border text-xs pl-8 pr-3 py-1.5 rounded-xl focus:outline-none focus:border-[#ff5500]`}
                 />
               </div>
 
@@ -572,20 +580,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               {/* Theme Toggle Button in Header */}
               <button
                 onClick={onToggleTheme}
-                className="p-2 text-zinc-400 hover:text-white bg-[#181920] hover:bg-[#22242c] rounded-xl border border-[#272935] transition-colors"
+                className={`p-2 ${isLight ? 'text-slate-600 bg-slate-100 hover:bg-slate-200 border-slate-200' : 'text-zinc-400 hover:text-white bg-[#181920] hover:bg-[#22242c] border-[#272935]'} rounded-xl border transition-colors`}
                 title={`Switch to ${currentTheme === 'dark' ? 'Light' : 'Dark'} Mode`}
               >
                 {currentTheme === 'dark' ? (
                   <Sun className="w-4 h-4 text-amber-400" />
                 ) : (
-                  <Moon className="w-4 h-4 text-indigo-400" />
+                  <Moon className="w-4 h-4 text-indigo-500" />
                 )}
               </button>
 
               {/* Close Button */}
               <button
                 onClick={onClose}
-                className="p-2 text-zinc-400 hover:text-white bg-[#181920] hover:bg-[#22242c] rounded-xl border border-[#272935] transition-colors"
+                className={`p-2 ${isLight ? 'text-slate-600 bg-slate-100 hover:bg-slate-200 border-slate-200' : 'text-zinc-400 hover:text-white bg-[#181920] hover:bg-[#22242c] border-[#272935]'} rounded-xl border transition-colors`}
                 title="Close Admin"
               >
                 <X className="w-4 h-4" />
@@ -603,63 +611,63 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               <div className="space-y-6">
                 {/* 4 Core Metric KPI Cards */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <div className="p-4 sm:p-5 bg-[#14151b] border border-[#232530] rounded-2xl space-y-2">
+                  <div className={`p-4 sm:p-5 ${isLight ? 'bg-white border-slate-200' : 'bg-[#14151b] border-[#232530]'} border rounded-2xl space-y-2 shadow-sm`}>
                     <div className="flex items-center justify-between text-zinc-400">
-                      <span className="text-xs font-semibold uppercase tracking-wider">Total Store Revenue</span>
+                      <span className={`text-xs font-semibold uppercase tracking-wider ${isLight ? 'text-slate-500' : 'text-zinc-400'}`}>Total Store Revenue</span>
                       <div className="p-2 bg-[#ff5500]/10 text-[#ff5500] rounded-lg">
                         <DollarSign className="w-4 h-4" />
                       </div>
                     </div>
-                    <div className="text-2xl sm:text-3xl font-black font-mono text-white">
+                    <div className={`text-2xl sm:3xl font-black font-mono ${isLight ? 'text-slate-900' : 'text-white'}`}>
                       R{totalRevenue.toLocaleString()}
                     </div>
-                    <div className="flex items-center gap-1.5 text-[11px] text-emerald-400">
+                    <div className="flex items-center gap-1.5 text-[11px] text-emerald-500">
                       <TrendingUp className="w-3.5 h-3.5" />
                       <span>+18.4% from last 30 days</span>
                     </div>
                   </div>
 
-                  <div className="p-4 sm:p-5 bg-[#14151b] border border-[#232530] rounded-2xl space-y-2">
+                  <div className={`p-4 sm:p-5 ${isLight ? 'bg-white border-slate-200' : 'bg-[#14151b] border-[#232530]'} border rounded-2xl space-y-2 shadow-sm`}>
                     <div className="flex items-center justify-between text-zinc-400">
-                      <span className="text-xs font-semibold uppercase tracking-wider">Processed Orders</span>
-                      <div className="p-2 bg-blue-500/10 text-blue-400 rounded-lg">
+                      <span className={`text-xs font-semibold uppercase tracking-wider ${isLight ? 'text-slate-500' : 'text-zinc-400'}`}>Processed Orders</span>
+                      <div className="p-2 bg-blue-500/10 text-blue-500 rounded-lg">
                         <ShoppingBag className="w-4 h-4" />
                       </div>
                     </div>
-                    <div className="text-2xl sm:text-3xl font-black font-mono text-white">
+                    <div className={`text-2xl sm:3xl font-black font-mono ${isLight ? 'text-slate-900' : 'text-white'}`}>
                       {orders.length}
                     </div>
-                    <div className="text-[11px] text-zinc-400">
-                      <strong className="text-white">{paidOrdersCount}</strong> completed transactions
+                    <div className={`text-[11px] ${isLight ? 'text-slate-500' : 'text-zinc-400'}`}>
+                      <strong className={isLight ? 'text-slate-900' : 'text-white'}>{paidOrdersCount}</strong> completed transactions
                     </div>
                   </div>
 
-                  <div className="p-4 sm:p-5 bg-[#14151b] border border-[#232530] rounded-2xl space-y-2">
+                  <div className={`p-4 sm:p-5 ${isLight ? 'bg-white border-slate-200' : 'bg-[#14151b] border-[#232530]'} border rounded-2xl space-y-2 shadow-sm`}>
                     <div className="flex items-center justify-between text-zinc-400">
-                      <span className="text-xs font-semibold uppercase tracking-wider">Active Catalog SKUs</span>
-                      <div className="p-2 bg-purple-500/10 text-purple-400 rounded-lg">
+                      <span className={`text-xs font-semibold uppercase tracking-wider ${isLight ? 'text-slate-500' : 'text-zinc-400'}`}>Active Catalog SKUs</span>
+                      <div className="p-2 bg-purple-500/10 text-purple-500 rounded-lg">
                         <Package className="w-4 h-4" />
                       </div>
                     </div>
-                    <div className="text-2xl sm:text-3xl font-black font-mono text-white">
+                    <div className={`text-2xl sm:3xl font-black font-mono ${isLight ? 'text-slate-900' : 'text-white'}`}>
                       {products.length}
                     </div>
-                    <div className="text-[11px] text-zinc-400">
-                      <strong className="text-white">{totalStockUnits}</strong> total units in warehouse
+                    <div className={`text-[11px] ${isLight ? 'text-slate-500' : 'text-zinc-400'}`}>
+                      <strong className={isLight ? 'text-slate-900' : 'text-white'}>{totalStockUnits}</strong> total units in warehouse
                     </div>
                   </div>
 
-                  <div className="p-4 sm:p-5 bg-[#14151b] border border-[#232530] rounded-2xl space-y-2">
+                  <div className={`p-4 sm:p-5 ${isLight ? 'bg-white border-slate-200' : 'bg-[#14151b] border-[#232530]'} border rounded-2xl space-y-2 shadow-sm`}>
                     <div className="flex items-center justify-between text-zinc-400">
-                      <span className="text-xs font-semibold uppercase tracking-wider">Awaiting Courier Guy</span>
-                      <div className="p-2 bg-amber-500/10 text-amber-400 rounded-lg">
+                      <span className={`text-xs font-semibold uppercase tracking-wider ${isLight ? 'text-slate-500' : 'text-zinc-400'}`}>Awaiting Courier Guy</span>
+                      <div className="p-2 bg-amber-500/10 text-amber-500 rounded-lg">
                         <Truck className="w-4 h-4" />
                       </div>
                     </div>
-                    <div className="text-2xl sm:text-3xl font-black font-mono text-amber-400">
+                    <div className="text-2xl sm:3xl font-black font-mono text-amber-500">
                       {pendingShipmentCount}
                     </div>
-                    <div className="text-[11px] text-zinc-400">
+                    <div className={`text-[11px] ${isLight ? 'text-slate-500' : 'text-zinc-400'}`}>
                       Ready for dispatch in Klerksdorp
                     </div>
                   </div>
@@ -668,13 +676,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 {/* Charts Grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   {/* Revenue Curve Chart */}
-                  <div className="lg:col-span-2 p-5 bg-[#14151b] border border-[#232530] rounded-2xl space-y-4">
+                  <div className={`lg:col-span-2 p-5 ${isLight ? 'bg-white border-slate-200' : 'bg-[#14151b] border-[#232530]'} border rounded-2xl space-y-4 shadow-sm`}>
                     <div className="flex items-center justify-between">
                       <div>
-                        <h3 className="text-sm font-bold text-white uppercase tracking-wider font-display">
+                        <h3 className={`text-sm font-bold ${isLight ? 'text-slate-900' : 'text-white'} uppercase tracking-wider font-display`}>
                           Weekly Sales & Fulfillment Performance
                         </h3>
-                        <p className="text-[11px] text-zinc-400">
+                        <p className={`text-[11px] ${isLight ? 'text-slate-500' : 'text-zinc-400'}`}>
                           Daily volume across PayFast Card, Instant EFT & Capitec Pay
                         </p>
                       </div>
@@ -683,7 +691,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       </span>
                     </div>
 
-                    <div className="h-64 w-full">
+                    <div className="h-64 w-full min-h-[220px]">
                       <ResponsiveContainer width="100%" height="100%">
                         <AreaChart data={revenueChartData}>
                           <defs>
@@ -692,16 +700,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                               <stop offset="95%" stopColor="#ff5500" stopOpacity={0.0} />
                             </linearGradient>
                           </defs>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#232530" />
-                          <XAxis dataKey="day" stroke="#64748b" fontSize={11} />
-                          <YAxis stroke="#64748b" fontSize={11} tickFormatter={(val) => `R${val}`} />
+                          <CartesianGrid strokeDasharray="3 3" stroke={isLight ? '#e2e8f0' : '#232530'} />
+                          <XAxis dataKey="day" stroke={isLight ? '#64748b' : '#9ca3af'} fontSize={11} />
+                          <YAxis stroke={isLight ? '#64748b' : '#9ca3af'} fontSize={11} tickFormatter={(val) => `R${val}`} />
                           <Tooltip
                             contentStyle={{
-                              backgroundColor: '#181920',
-                              borderColor: '#2e303e',
+                              backgroundColor: isLight ? '#ffffff' : '#181920',
+                              borderColor: isLight ? '#e2e8f0' : '#2e303e',
                               borderRadius: '12px',
-                              color: '#ffffff',
-                              fontSize: '12px'
+                              color: isLight ? '#0f172a' : '#ffffff',
+                              fontSize: '12px',
+                              boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
                             }}
                           />
                           <Area
@@ -718,15 +727,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   </div>
 
                   {/* Category Distribution Pie Chart */}
-                  <div className="p-5 bg-[#14151b] border border-[#232530] rounded-2xl space-y-4">
+                  <div className={`p-5 ${isLight ? 'bg-white border-slate-200' : 'bg-[#14151b] border-[#232530]'} border rounded-2xl space-y-4 shadow-sm`}>
                     <div>
-                      <h3 className="text-sm font-bold text-white uppercase tracking-wider font-display">
+                      <h3 className={`text-sm font-bold ${isLight ? 'text-slate-900' : 'text-white'} uppercase tracking-wider font-display`}>
                         Inventory by Category
                       </h3>
-                      <p className="text-[11px] text-zinc-400">Garment SKU breakdown</p>
+                      <p className={`text-[11px] ${isLight ? 'text-slate-500' : 'text-zinc-400'}`}>Garment SKU breakdown</p>
                     </div>
 
-                    <div className="h-44 w-full flex items-center justify-center">
+                    <div className="h-44 w-full flex items-center justify-center min-h-[160px]">
                       <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
                           <Pie
@@ -744,10 +753,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                           </Pie>
                           <Tooltip
                             contentStyle={{
-                              backgroundColor: '#181920',
-                              borderColor: '#2e303e',
+                              backgroundColor: isLight ? '#ffffff' : '#181920',
+                              borderColor: isLight ? '#e2e8f0' : '#2e303e',
                               borderRadius: '10px',
-                              color: '#fff',
+                              color: isLight ? '#0f172a' : '#ffffff',
                               fontSize: '11px'
                             }}
                           />
@@ -757,137 +766,107 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
                     <div className="space-y-1.5 text-xs max-h-32 overflow-y-auto pr-1">
                       {categoryChartData.map((item, idx) => (
-                        <div key={idx} className="flex items-center justify-between text-[11px] text-zinc-300">
+                        <div key={idx} className={`flex items-center justify-between text-[11px] ${isLight ? 'text-slate-600' : 'text-zinc-300'}`}>
                           <div className="flex items-center gap-2">
                             <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.color }} />
                             <span>{item.name}</span>
                           </div>
-                          <span className="font-mono font-bold text-zinc-400">{item.value} SKUs</span>
+                          <span className="font-mono font-bold">{item.value} SKUs</span>
                         </div>
                       ))}
                     </div>
                   </div>
                 </div>
 
-                {/* Recent Orders & Stock Alerts Grid */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  {/* Recent Orders Table */}
-                  <div className="lg:col-span-2 p-5 bg-[#14151b] border border-[#232530] rounded-2xl space-y-4">
+                {/* Low Stock Alerts & Recent Orders */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Low Stock Alert */}
+                  <div className={`p-5 ${isLight ? 'bg-white border-slate-200' : 'bg-[#14151b] border-[#232530]'} border rounded-2xl space-y-3 shadow-sm`}>
                     <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="text-sm font-bold text-white uppercase tracking-wider font-display">
-                          Recent Customer Orders
+                      <div className="flex items-center gap-2">
+                        <AlertTriangle className="w-4 h-4 text-amber-500" />
+                        <h3 className={`text-sm font-bold ${isLight ? 'text-slate-900' : 'text-white'} uppercase tracking-wider font-display`}>
+                          Low Stock Garments ({lowStockProducts.length})
                         </h3>
-                        <p className="text-[11px] text-zinc-400">Direct PayFast checkout transactions</p>
                       </div>
                       <button
-                        onClick={() => setActivePage('orders')}
-                        className="text-xs text-[#ff5500] hover:underline font-bold flex items-center gap-1"
+                        onClick={() => setActivePage('products')}
+                        className="text-xs text-[#ff5500] hover:underline font-semibold"
                       >
-                        <span>View All ({orders.length})</span>
-                        <ChevronRight className="w-3.5 h-3.5" />
+                        Restock Now →
                       </button>
                     </div>
 
-                    {orders.length === 0 ? (
-                      <div className="p-8 text-center bg-[#181920] rounded-xl text-zinc-400 text-xs">
-                        No orders recorded yet. As customers buy on the storefront, they appear here live.
-                      </div>
-                    ) : (
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-xs text-left">
-                          <thead>
-                            <tr className="text-[10px] text-zinc-400 uppercase tracking-wider border-b border-[#232530]">
-                              <th className="pb-2.5 font-semibold">Order</th>
-                              <th className="pb-2.5 font-semibold">Customer</th>
-                              <th className="pb-2.5 font-semibold">Total</th>
-                              <th className="pb-2.5 font-semibold">Status</th>
-                              <th className="pb-2.5 font-semibold text-right">Action</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-[#1e2029]">
-                            {orders.slice(0, 5).map((order) => (
-                              <tr key={order.id} className="hover:bg-[#181920]/60 transition-colors">
-                                <td className="py-3 font-mono font-bold text-white">
-                                  {order.orderNumber}
-                                </td>
-                                <td className="py-3">
-                                  <div className="font-semibold text-zinc-200">{order.customer.fullName}</div>
-                                  <div className="text-[10px] text-zinc-400">{order.customer.city}</div>
-                                </td>
-                                <td className="py-3 font-mono font-bold text-[#ff5500]">
-                                  R{order.total.toLocaleString()}
-                                </td>
-                                <td className="py-3">
-                                  <span
-                                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                                      order.status === 'delivered'
-                                        ? 'bg-emerald-500/20 text-emerald-400'
-                                        : order.status === 'shipped'
-                                        ? 'bg-blue-500/20 text-blue-400'
-                                        : order.status === 'cancelled'
-                                        ? 'bg-red-500/20 text-red-400'
-                                        : 'bg-amber-500/20 text-amber-400'
-                                    }`}
-                                  >
-                                    {order.status}
-                                  </span>
-                                </td>
-                                <td className="py-3 text-right">
-                                  <button
-                                    onClick={() => {
-                                      setViewingOrder(order);
-                                      setTrackingInput(order.trackingNumber || '');
-                                    }}
-                                    className="px-2.5 py-1 bg-[#20222a] hover:bg-[#2c2e3a] text-zinc-200 text-[11px] font-medium rounded-lg transition-colors"
-                                  >
-                                    Manage
-                                  </button>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Stock Alerts Panel */}
-                  <div className="p-5 bg-[#14151b] border border-[#232530] rounded-2xl space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="text-sm font-bold text-white uppercase tracking-wider font-display flex items-center gap-1.5">
-                          <AlertTriangle className="w-4 h-4 text-amber-400" />
-                          <span>Low Stock SKUs</span>
-                        </h3>
-                        <p className="text-[11px] text-zinc-400">SKUs with 6 or fewer units</p>
-                      </div>
-                    </div>
-
-                    {lowStockProducts.length === 0 ? (
-                      <div className="p-6 text-center bg-[#181920] rounded-xl text-emerald-400 text-xs font-medium flex flex-col items-center gap-2">
-                        <CheckCircle2 className="w-6 h-6" />
-                        <span>All products have healthy inventory levels!</span>
-                      </div>
-                    ) : (
-                      <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1">
-                        {lowStockProducts.map((p) => (
-                          <div key={p.id} className="p-3 bg-[#181920] rounded-xl border border-[#272935] flex items-center justify-between gap-3">
-                            <img src={p.image} alt={p.title} className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
-                            <div className="flex-1 min-w-0">
-                              <h4 className="text-xs font-bold text-white truncate">{p.title}</h4>
-                              <span className="text-[10px] text-zinc-400 font-mono">{p.sku}</span>
+                    <div className="space-y-2">
+                      {lowStockProducts.length === 0 ? (
+                        <p className={`text-xs ${isLight ? 'text-slate-500' : 'text-zinc-500'} italic py-3`}>All inventory levels healthy in warehouse.</p>
+                      ) : (
+                        lowStockProducts.map((p) => (
+                          <div
+                            key={p.id}
+                            className={`p-3 ${isLight ? 'bg-slate-50 border-slate-200' : 'bg-[#181920] border-[#272935]'} border rounded-xl flex items-center justify-between gap-3`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <img src={p.image} alt={p.title} className="w-10 h-10 rounded-lg object-cover" />
+                              <div>
+                                <h4 className={`text-xs font-bold ${isLight ? 'text-slate-900' : 'text-white'} line-clamp-1`}>{p.title}</h4>
+                                <span className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-zinc-400'} font-mono`}>{p.category}</span>
+                              </div>
                             </div>
-                            <div className="text-right flex-shrink-0">
-                              <span className="text-xs font-mono font-black text-amber-400 block">
+                            <div className="text-right">
+                              <span className="px-2 py-0.5 bg-amber-500/10 text-amber-500 font-mono font-bold text-xs rounded border border-amber-500/20">
                                 {p.stockQuantity} left
                               </span>
-                              <span className="text-[10px] text-zinc-400">R{p.price}</span>
                             </div>
                           </div>
-                        ))}
+                        ))
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Recent Orders Overview */}
+                  <div className={`p-5 ${isLight ? 'bg-white border-slate-200' : 'bg-[#14151b] border-[#232530]'} border rounded-2xl space-y-3 shadow-sm`}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <ShoppingBag className="w-4 h-4 text-emerald-500" />
+                        <h3 className={`text-sm font-bold ${isLight ? 'text-slate-900' : 'text-white'} uppercase tracking-wider font-display`}>
+                          Recent Online Orders
+                        </h3>
                       </div>
-                    )}
+                      <button
+                        onClick={() => setActivePage('orders')}
+                        className="text-xs text-[#ff5500] hover:underline font-semibold"
+                      >
+                        View All Orders →
+                      </button>
+                    </div>
+
+                    <div className="space-y-2">
+                      {orders.slice(0, 3).map((o) => (
+                        <div
+                          key={o.id}
+                          className={`p-3 ${isLight ? 'bg-slate-50 border-slate-200' : 'bg-[#181920] border-[#272935]'} border rounded-xl flex items-center justify-between gap-3`}
+                        >
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-mono font-bold text-[#ff5500]">{o.orderNumber}</span>
+                              <span className={`text-xs font-semibold ${isLight ? 'text-slate-900' : 'text-white'}`}>{o.customer.fullName}</span>
+                            </div>
+                            <p className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-zinc-400'}`}>
+                              {o.items.length} garment(s) • {o.customer.city}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <span className={`text-xs font-mono font-bold ${isLight ? 'text-slate-900' : 'text-white'} block`}>
+                              R{o.total.toLocaleString()}
+                            </span>
+                            <span className="text-[10px] uppercase font-bold text-emerald-500">
+                              {o.status}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -898,18 +877,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             {/* ============================================================ */}
             {activePage === 'products' && (
               <div className="space-y-6">
-                {/* Top Filter & Action Bar */}
-                <div className="p-4 bg-[#14151b] border border-[#232530] rounded-2xl flex flex-wrap items-center justify-between gap-4">
-                  <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                    <span className="text-xs text-zinc-400 font-semibold uppercase tracking-wider">Category:</span>
-                    {['All', 'Caps', 'Luxury Knitwear', 'Hoodies & Sweats', 'Combos'].map((cat) => (
+                {/* Catalog Controls */}
+                <div className={`p-4 ${isLight ? 'bg-white border-slate-200' : 'bg-[#14151b] border-[#232530]'} border rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm`}>
+                  <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                    {['All', 'Luxury Knitwear', 'Caps', 'Hoodies & Sweats', 'Combos'].map((cat) => (
                       <button
                         key={cat}
                         onClick={() => setSelectedCategoryFilter(cat)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors ${
                           selectedCategoryFilter === cat
-                            ? 'bg-[#ff5500] text-black font-bold'
-                            : 'bg-[#181920] text-zinc-400 hover:text-white border border-[#272935]'
+                            ? 'bg-[#ff5500] text-black'
+                            : isLight ? 'bg-slate-100 text-slate-700 hover:bg-slate-200' : 'bg-[#1a1b22] text-zinc-300 hover:bg-[#22242c]'
                         }`}
                       >
                         {cat}
@@ -917,85 +895,79 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     ))}
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setIsAddProductOpen(true)}
-                      className="flex items-center gap-1.5 px-4 py-2 bg-[#ff5500] hover:bg-[#e04a00] text-black font-black text-xs uppercase tracking-wider rounded-xl shadow-md shadow-[#ff5500]/20 transition-all"
-                    >
-                      <Plus className="w-4 h-4 stroke-[3]" />
-                      <span>Add New Garment</span>
-                    </button>
-                  </div>
+                  <button
+                    onClick={() => setIsAddProductOpen(true)}
+                    className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-[#ff5500] text-black font-bold text-xs uppercase tracking-wider rounded-xl shadow-md shadow-[#ff5500]/20 hover:bg-[#e04a00] transition-colors"
+                  >
+                    <Plus className="w-4 h-4 stroke-[3]" />
+                    <span>Add New Garment</span>
+                  </button>
                 </div>
 
-                {/* Products Table */}
-                <div className="bg-[#14151b] border border-[#232530] rounded-2xl overflow-hidden">
+                {/* Product Table */}
+                <div className={`${isLight ? 'bg-white border-slate-200' : 'bg-[#14151b] border-[#232530]'} border rounded-2xl overflow-hidden shadow-sm`}>
                   <div className="overflow-x-auto">
-                    <table className="w-full text-xs text-left">
-                      <thead>
-                        <tr className="text-[10px] text-zinc-400 uppercase tracking-wider bg-[#181920] border-b border-[#232530]">
-                          <th className="p-4 font-semibold">Garment / SKU</th>
-                          <th className="p-4 font-semibold">Category</th>
-                          <th className="p-4 font-semibold">Price</th>
-                          <th className="p-4 font-semibold">Stock Quantity</th>
-                          <th className="p-4 font-semibold">Tag</th>
-                          <th className="p-4 font-semibold text-right">Actions</th>
+                    <table className="w-full text-left text-xs">
+                      <thead className={`${isLight ? 'bg-slate-50 border-slate-200 text-slate-600' : 'bg-[#171820] border-[#262835] text-zinc-400'} border-b uppercase font-mono text-[10px]`}>
+                        <tr>
+                          <th className="p-4">Piece / SKU</th>
+                          <th className="p-4">Category</th>
+                          <th className="p-4">Price (ZAR)</th>
+                          <th className="p-4">Stock Status</th>
+                          <th className="p-4 text-right">Actions</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-[#1e2029]">
+                      <tbody className={`divide-y ${isLight ? 'divide-slate-200' : 'divide-[#1f212a]'}`}>
                         {filteredProducts.map((p) => (
-                          <tr key={p.id} className="hover:bg-[#181920]/70 transition-colors">
+                          <tr key={p.id} className={isLight ? 'hover:bg-slate-50' : 'hover:bg-[#181922]'}>
                             <td className="p-4">
                               <div className="flex items-center gap-3">
-                                <img src={p.image} alt={p.title} className="w-12 h-12 rounded-xl object-cover border border-[#272935] flex-shrink-0" />
+                                <img src={p.image} alt={p.title} className="w-12 h-12 rounded-xl object-cover" />
                                 <div>
-                                  <h4 className="font-bold text-white text-xs sm:text-sm">{p.title}</h4>
-                                  <span className="text-[10px] text-zinc-400 font-mono">{p.sku}</span>
+                                  <h4 className={`font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>{p.title}</h4>
+                                  <span className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-zinc-500'} font-mono`}>{p.sku || p.id}</span>
                                 </div>
                               </div>
                             </td>
                             <td className="p-4">
-                              <span className="px-2.5 py-1 rounded-lg bg-[#1a1b22] text-zinc-300 text-[11px] font-medium border border-[#272935]">
+                              <span className={`px-2.5 py-1 ${isLight ? 'bg-slate-100 text-slate-700' : 'bg-[#20222a] text-zinc-300'} rounded-lg font-medium text-[11px]`}>
                                 {p.category}
                               </span>
                             </td>
-                            <td className="p-4 font-mono font-bold text-[#ff5500] text-sm">
-                              R{p.price.toLocaleString()}
-                              {p.originalPrice && (
-                                <span className="text-zinc-500 line-through text-[10px] ml-1.5">
-                                  R{p.originalPrice}
+                            <td className="p-4">
+                              <div className="font-mono font-bold">
+                                <span className={isLight ? 'text-slate-900' : 'text-white'}>R{p.price}</span>
+                                {p.originalPrice && (
+                                  <span className={`text-[10px] ${isLight ? 'text-slate-400' : 'text-zinc-500'} line-through ml-1.5`}>
+                                    R{p.originalPrice}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="p-4">
+                              {p.stockQuantity <= 0 ? (
+                                <span className="px-2 py-0.5 bg-red-500/10 text-red-500 font-bold rounded text-[10px]">
+                                  Sold Out
                                 </span>
-                              )}
-                            </td>
-                            <td className="p-4">
-                              <span
-                                className={`px-2.5 py-1 rounded-full text-[11px] font-mono font-bold ${
-                                  p.stockQuantity <= 5
-                                    ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                                    : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                                }`}
-                              >
-                                {p.stockQuantity} in stock
-                              </span>
-                            </td>
-                            <td className="p-4">
-                              {p.tag ? (
-                                <span className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-[#ff5500]/20 text-[#ff5500] border border-[#ff5500]/30 font-mono">
-                                  {p.tag}
+                              ) : p.stockQuantity <= 5 ? (
+                                <span className="px-2 py-0.5 bg-amber-500/10 text-amber-500 font-bold rounded text-[10px]">
+                                  Low Stock ({p.stockQuantity})
                                 </span>
                               ) : (
-                                <span className="text-zinc-500 text-[10px]">-</span>
+                                <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-500 font-bold rounded text-[10px]">
+                                  In Stock ({p.stockQuantity})
+                                </span>
                               )}
                             </td>
                             <td className="p-4 text-right">
                               <button
                                 onClick={() => {
-                                  if (confirm(`Delete product "${p.title}"?`)) {
+                                  if (confirm(`Delete "${p.title}" from store inventory?`)) {
                                     onDeleteProduct(p.id);
                                   }
                                 }}
-                                className="p-2 text-zinc-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
-                                title="Delete SKU"
+                                className={`p-2 ${isLight ? 'text-slate-400 hover:text-red-600 hover:bg-red-50' : 'text-zinc-500 hover:text-red-400 hover:bg-red-500/10'} rounded-lg transition-colors`}
+                                title="Delete Product"
                               >
                                 <Trash2 className="w-4 h-4" />
                               </button>
@@ -1014,109 +986,117 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             {/* ============================================================ */}
             {activePage === 'orders' && (
               <div className="space-y-6">
-                {/* Status Filter Strip */}
-                <div className="p-4 bg-[#14151b] border border-[#232530] rounded-2xl flex flex-wrap items-center justify-between gap-4">
+                {/* Order Filters */}
+                <div className={`p-4 ${isLight ? 'bg-white border-slate-200' : 'bg-[#14151b] border-[#232530]'} border rounded-2xl flex flex-wrap items-center justify-between gap-3 shadow-sm`}>
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-xs text-zinc-400 font-semibold uppercase tracking-wider">Status:</span>
-                    {['all', 'paid', 'processing', 'shipped', 'delivered', 'cancelled'].map((status) => (
+                    {['all', 'paid', 'processing', 'shipped', 'delivered'].map((st) => (
                       <button
-                        key={status}
-                        onClick={() => setSelectedOrderStatusFilter(status)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-medium uppercase tracking-wider transition-colors ${
-                          selectedOrderStatusFilter === status
-                            ? 'bg-[#ff5500] text-black font-bold'
-                            : 'bg-[#181920] text-zinc-400 hover:text-white border border-[#272935]'
+                        key={st}
+                        onClick={() => setSelectedOrderStatusFilter(st)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold capitalize transition-colors ${
+                          selectedOrderStatusFilter === st
+                            ? 'bg-[#ff5500] text-black'
+                            : isLight ? 'bg-slate-100 text-slate-700 hover:bg-slate-200' : 'bg-[#1a1b22] text-zinc-300 hover:bg-[#22242c]'
                         }`}
                       >
-                        {status}
+                        {st}
                       </button>
                     ))}
                   </div>
 
-                  <span className="text-xs text-zinc-400 font-mono">
-                    Showing <strong className="text-white">{filteredOrders.length}</strong> of {orders.length} orders
+                  <span className={`text-xs ${isLight ? 'text-slate-500' : 'text-zinc-400'} font-mono`}>
+                    Total: {filteredOrders.length} Order(s)
                   </span>
                 </div>
 
                 {/* Orders List */}
                 <div className="space-y-3">
                   {filteredOrders.length === 0 ? (
-                    <div className="p-12 text-center bg-[#14151b] rounded-2xl border border-[#232530] text-zinc-400 text-xs">
-                      No orders match the current status filter.
+                    <div className={`p-12 text-center ${isLight ? 'bg-white border-slate-200 text-slate-500' : 'bg-[#14151b] border-[#232530] text-zinc-400'} border rounded-2xl space-y-2`}>
+                      <ShoppingBag className="w-8 h-8 text-zinc-600 mx-auto" />
+                      <p className="font-bold text-sm">No orders matching this filter</p>
                     </div>
                   ) : (
                     filteredOrders.map((order) => (
                       <div
                         key={order.id}
-                        className="p-4 sm:p-5 bg-[#14151b] border border-[#232530] rounded-2xl hover:border-[#ff5500]/40 transition-colors space-y-3"
+                        className={`p-5 ${isLight ? 'bg-white border-slate-200' : 'bg-[#14151b] border-[#232530]'} border rounded-2xl space-y-4 shadow-sm`}
                       >
-                        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#21232d] pb-3">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-inherit pb-3">
                           <div className="flex items-center gap-3">
-                            <span className="text-sm font-black font-mono text-white">
+                            <span className="font-mono font-bold text-[#ff5500] text-sm">
                               {order.orderNumber}
                             </span>
-                            <span
-                              className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase font-mono ${
-                                order.status === 'delivered'
-                                  ? 'bg-emerald-500/20 text-emerald-400'
-                                  : order.status === 'shipped'
-                                  ? 'bg-blue-500/20 text-blue-400'
-                                  : order.status === 'cancelled'
-                                  ? 'bg-red-500/20 text-red-400'
-                                  : 'bg-amber-500/20 text-amber-400'
-                              }`}
-                            >
-                              {order.status}
-                            </span>
-                            <span className="text-[11px] text-zinc-400 font-mono">
-                              {new Date(order.createdAt).toLocaleDateString()}
+                            <span className={`text-xs ${isLight ? 'text-slate-500' : 'text-zinc-400'}`}>
+                              {new Date(order.createdAt).toLocaleDateString('en-ZA', {
+                                day: 'numeric',
+                                month: 'short',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
                             </span>
                           </div>
 
                           <div className="flex items-center gap-2">
-                            <strong className="text-base font-black font-mono text-[#ff5500]">
+                            <span className="px-2.5 py-1 bg-emerald-500/10 text-emerald-500 font-mono font-bold text-xs rounded uppercase">
+                              {order.status}
+                            </span>
+                            <span className={`text-xs font-bold font-mono ${isLight ? 'text-slate-900' : 'text-white'}`}>
                               R{order.total.toLocaleString()}
-                            </strong>
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Customer & Delivery Summary */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                          <div>
+                            <span className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-zinc-500'} block uppercase font-mono`}>Recipient</span>
+                            <p className={`font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>{order.customer.fullName}</p>
+                            <p className={isLight ? 'text-slate-600' : 'text-zinc-400'}>{order.customer.phone}</p>
+                            <p className={isLight ? 'text-slate-600' : 'text-zinc-400'}>{order.customer.email}</p>
+                          </div>
+
+                          <div>
+                            <span className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-zinc-500'} block uppercase font-mono`}>Delivery Destination</span>
+                            <p className={`font-semibold ${isLight ? 'text-slate-800' : 'text-zinc-300'}`}>{order.customer.streetAddress}</p>
+                            <p className={isLight ? 'text-slate-600' : 'text-zinc-400'}>
+                              {order.customer.suburb ? `${order.customer.suburb}, ` : ''}{order.customer.city}, {order.customer.postalCode}
+                            </p>
+                            <span className="text-[10px] text-[#ff5500] font-mono mt-0.5 block">
+                              {order.deliveryMethod === 'courier_guy' ? 'The Courier Guy Door Delivery' : 'PAXI PEP Store Collection'}
+                            </span>
+                          </div>
+
+                          <div className="flex flex-col justify-between">
+                            <div>
+                              <span className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-zinc-500'} block uppercase font-mono`}>Tracking Number</span>
+                              <p className="font-mono text-xs font-bold text-blue-500">
+                                {order.trackingNumber || 'Pending Courier Waybill'}
+                              </p>
+                            </div>
+
                             <button
                               onClick={() => {
                                 setViewingOrder(order);
                                 setTrackingInput(order.trackingNumber || '');
                               }}
-                              className="px-3 py-1.5 bg-[#ff5500] hover:bg-[#e04a00] text-black font-bold text-xs rounded-xl transition-colors"
+                              className={`mt-2 py-1.5 px-3 ${isLight ? 'bg-slate-100 hover:bg-slate-200 text-slate-800' : 'bg-[#1f212a] hover:bg-[#282a35] text-zinc-200'} rounded-lg text-xs font-semibold text-center transition-colors`}
                             >
-                              Fulfill & Track
+                              Manage Order & Waybill →
                             </button>
                           </div>
                         </div>
 
-                        {/* Order Sub-Details */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-                          <div>
-                            <span className="text-[10px] text-zinc-500 block uppercase font-mono">Customer</span>
-                            <strong className="text-zinc-200">{order.customer.fullName}</strong>
-                            <div className="text-zinc-400 text-[11px]">{order.customer.email} • {order.customer.phone}</div>
-                          </div>
-
-                          <div>
-                            <span className="text-[10px] text-zinc-500 block uppercase font-mono">Delivery Address</span>
-                            <div className="text-zinc-300 text-[11px] leading-snug">
-                              {order.customer.address}, {order.customer.city}, {order.customer.postalCode}
+                        {/* Order Items Pill list */}
+                        <div className={`pt-2 flex flex-wrap gap-2 border-t ${isLight ? 'border-slate-100' : 'border-[#1b1c24]'}`}>
+                          {order.items.map((it, idx) => (
+                            <div key={idx} className={`px-2.5 py-1 ${isLight ? 'bg-slate-50 border-slate-200 text-slate-700' : 'bg-[#181920] border-[#252733] text-zinc-300'} border rounded-lg text-[11px] flex items-center gap-2`}>
+                              <span className="font-bold text-[#ff5500]">{it.quantity}x</span>
+                              <span>{it.product.title}</span>
+                              <span className="text-[10px] opacity-70">({it.selectedSize})</span>
                             </div>
-                            <div className="text-[#ff5500] text-[10px] font-semibold mt-0.5 uppercase">
-                              {order.deliveryMethod === 'courier_guy' ? 'The Courier Guy (Door)' : 'PAXI Pep Collection'}
-                            </div>
-                          </div>
-
-                          <div>
-                            <span className="text-[10px] text-zinc-500 block uppercase font-mono">Items Ordered ({order.items.length})</span>
-                            <div className="text-zinc-300 text-[11px] space-y-0.5">
-                              {order.items.map((it, idx) => (
-                                <div key={idx} className="truncate">
-                                  {it.quantity}x {it.product.title} <span className="text-zinc-500">({it.selectedSize})</span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
+                          ))}
                         </div>
                       </div>
                     ))
@@ -1126,49 +1106,57 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             )}
 
             {/* ============================================================ */}
-            {/* 4. 018 STREETWEAR LOOKS PAGE */}
+            {/* 4. 018 STREETWEAR LOOKS (COMMUNITY) */}
             {/* ============================================================ */}
             {activePage === 'community' && (
               <div className="space-y-6">
-                <div className="p-5 bg-[#14151b] border border-[#232530] rounded-2xl flex items-center justify-between">
+                <div className={`p-5 ${isLight ? 'bg-white border-slate-200' : 'bg-[#14151b] border-[#232530]'} border rounded-2xl flex items-center justify-between shadow-sm`}>
                   <div>
-                    <h3 className="text-sm font-bold text-white uppercase tracking-wider font-display">
-                      Community Streetwear Gallery ("Wear What We Dial")
+                    <h3 className={`text-base font-bold ${isLight ? 'text-slate-900' : 'text-white'} font-display uppercase`}>
+                      "Wear What We Dial (018)" Community Showcase
                     </h3>
-                    <p className="text-[11px] text-zinc-400">
-                      Customer snapshots uploaded via camera or gallery on the storefront
+                    <p className={`text-xs ${isLight ? 'text-slate-500' : 'text-zinc-400'}`}>
+                      User submitted photos & curated Instagram streetwear outfits from fans in Klerksdorp, JHB, and North West.
                     </p>
                   </div>
-                  <span className="px-3 py-1 bg-purple-500/20 text-purple-300 font-mono text-xs font-bold rounded-lg border border-purple-500/30">
+                  <span className="px-3 py-1 bg-[#ff5500]/10 text-[#ff5500] font-mono font-bold text-xs rounded-xl">
                     {communityPhotos.length} Total Looks
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                   {communityPhotos.map((photo) => (
-                    <div key={photo.id} className="bg-[#14151b] border border-[#232530] rounded-2xl overflow-hidden group">
-                      <div className="aspect-square relative overflow-hidden bg-black">
+                    <div
+                      key={photo.id}
+                      className={`group ${isLight ? 'bg-white border-slate-200' : 'bg-[#14151b] border-[#232530]'} border rounded-2xl overflow-hidden shadow-sm flex flex-col`}
+                    >
+                      <div className="aspect-square relative overflow-hidden bg-zinc-900">
                         <img
                           src={photo.imageUrl}
-                          alt={photo.caption}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          alt={photo.userName}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                         />
-                        <div className="absolute top-3 right-3 px-2 py-1 bg-black/70 backdrop-blur-md rounded-lg text-[10px] font-mono text-white font-bold">
+                        <div className="absolute top-3 right-3 px-2 py-1 bg-black/60 backdrop-blur-md rounded-lg text-white text-[10px] font-mono">
                           ❤️ {photo.likes} Likes
                         </div>
                       </div>
 
-                      <div className="p-3.5 space-y-1.5 text-xs">
-                        <div className="flex items-center justify-between">
-                          <strong className="text-white">{photo.userName}</strong>
-                          <span className="text-[10px] text-[#ff5500] font-mono">{photo.handle}</span>
+                      <div className="p-4 space-y-2 flex-1 flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-center justify-between">
+                            <h4 className={`text-xs font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>{photo.userName}</h4>
+                            <span className="text-[10px] text-[#ff5500] font-mono">{photo.handle}</span>
+                          </div>
+                          <p className={`text-[11px] ${isLight ? 'text-slate-600' : 'text-zinc-400'} italic mt-1`}>
+                            "{photo.caption}"
+                          </p>
                         </div>
-                        <p className="text-[11px] text-zinc-400 line-clamp-2">
-                          "{photo.caption}"
-                        </p>
-                        <div className="pt-2 border-t border-[#21232d] flex items-center justify-between text-[10px] text-zinc-500">
-                          <span>{photo.location}</span>
-                          <span className="text-[#ff5500] font-semibold">{photo.productTagged}</span>
+
+                        <div className={`pt-2 border-t ${isLight ? 'border-slate-100' : 'border-[#21232d]'} flex items-center justify-between text-[10px]`}>
+                          <span className={isLight ? 'text-slate-500' : 'text-zinc-500'}>{photo.location}</span>
+                          <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-500 font-bold rounded">
+                            Verified Fan
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -1178,32 +1166,27 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             )}
 
             {/* ============================================================ */}
-            {/* 5. SUPABASE & SQL DATABASE HUB PAGE */}
+            {/* 5. SUPABASE & SQL DATABASE HUB */}
             {/* ============================================================ */}
             {activePage === 'database' && (
-              <div className="space-y-6 text-xs text-zinc-300">
-                {/* Live Status Banner */}
-                <div className="p-5 bg-[#14151b] border border-[#232530] rounded-2xl space-y-4">
-                  <div className="flex flex-wrap items-center justify-between gap-4">
-                    <div className="flex items-center gap-3">
-                      <div className={`p-3 rounded-xl ${supabaseStatus.connected ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}`}>
+              <div className="space-y-6">
+                {/* Status Hero Card */}
+                <div className={`p-6 ${isLight ? 'bg-white border-slate-200' : 'bg-[#14151b] border-[#232530]'} border rounded-2xl space-y-4 shadow-sm`}>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-3.5">
+                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${
+                        supabaseStatus.connected ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
+                      }`}>
                         <Database className="w-6 h-6" />
                       </div>
                       <div>
-                        <h3 className="text-base font-bold text-white flex items-center gap-2">
-                          <span>Supabase Live PostgreSQL Engine</span>
-                          {supabaseStatus.connected ? (
-                            <span className="bg-emerald-500/20 text-emerald-400 text-[10px] px-2.5 py-0.5 rounded-full font-bold border border-emerald-500/30 font-mono">
-                              CONNECTED & LIVE
-                            </span>
-                          ) : (
-                            <span className="bg-amber-500/20 text-amber-400 text-[10px] px-2.5 py-0.5 rounded-full font-bold border border-amber-500/30 font-mono">
-                              IN-MEMORY FALLBACK
-                            </span>
-                          )}
-                        </h3>
-                        <p className="text-zinc-400 text-xs mt-0.5">
-                          {supabaseStatus.message}
+                        <h2 className={`text-base font-black ${isLight ? 'text-slate-900' : 'text-white'} uppercase font-display tracking-tight`}>
+                          Supabase PostgreSQL Database
+                        </h2>
+                        <p className={`text-xs ${isLight ? 'text-slate-500' : 'text-zinc-400'}`}>
+                          {supabaseStatus.connected
+                            ? 'Connected to live cloud Supabase database'
+                            : 'Active fallback mode. Run schema.sql in Supabase to sync live.'}
                         </p>
                       </div>
                     </div>
@@ -1212,84 +1195,65 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       <button
                         onClick={fetchDbStatus}
                         disabled={checkingDb}
-                        className="flex items-center gap-1.5 px-3.5 py-2 bg-[#20222a] hover:bg-[#2c2e3a] text-zinc-200 text-xs font-semibold rounded-xl border border-[#2c2e3c] transition-colors"
+                        className={`flex items-center gap-2 px-3.5 py-2 ${isLight ? 'bg-slate-100 hover:bg-slate-200 text-slate-800' : 'bg-[#1e2029] hover:bg-[#282a35] text-zinc-200'} rounded-xl text-xs font-semibold transition-colors`}
                       >
                         <RefreshCw className={`w-3.5 h-3.5 ${checkingDb ? 'animate-spin text-[#ff5500]' : ''}`} />
-                        <span>Test Connection</span>
+                        <span>Test Ping</span>
                       </button>
 
                       <button
                         onClick={handleDownloadSql}
-                        className="flex items-center gap-1.5 px-3.5 py-2 bg-[#ff5500] hover:bg-[#e04a00] text-black text-xs font-bold rounded-xl transition-colors shadow-md shadow-[#ff5500]/20"
+                        className="flex items-center gap-2 px-3.5 py-2 bg-[#ff5500] hover:bg-[#e04a00] text-black rounded-xl text-xs font-bold transition-all shadow-md shadow-[#ff5500]/20"
                       >
                         <Download className="w-3.5 h-3.5" />
                         <span>Download schema.sql</span>
                       </button>
                     </div>
                   </div>
-
-                  {supabaseStatus.url && (
-                    <div className="p-3 bg-[#0d0e12] rounded-xl border border-[#1e2029] font-mono text-xs text-zinc-300 flex items-center justify-between">
-                      <span>Supabase Project URL: <strong className="text-white">{supabaseStatus.url}</strong></span>
-                      <a
-                        href={supabaseStatus.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-[#ff5500] hover:underline flex items-center gap-1 text-[11px]"
-                      >
-                        <span>Open Supabase Console</span>
-                        <ExternalLink className="w-3.5 h-3.5" />
-                      </a>
-                    </div>
-                  )}
                 </div>
 
                 {/* 3 Step Setup Guide */}
-                <div className="p-5 bg-[#14151b] border border-[#232530] rounded-2xl space-y-4">
-                  <h4 className="font-bold text-white uppercase tracking-wider text-xs font-display flex items-center gap-2">
-                    <Server className="w-4 h-4 text-[#ff5500]" />
-                    <span>How to Link Your Supabase Project (3 Easy Steps)</span>
-                  </h4>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <div className="p-4 bg-[#181920] border border-[#272935] rounded-xl space-y-2">
-                      <span className="w-6 h-6 rounded-full bg-[#ff5500] text-black font-extrabold text-xs flex items-center justify-center font-mono">
-                        1
-                      </span>
-                      <strong className="text-white block text-xs">Create Supabase Project</strong>
-                      <p className="text-zinc-400 text-[11px]">
-                        Visit <a href="https://supabase.com" target="_blank" rel="noreferrer" className="text-[#ff5500] hover:underline">supabase.com</a>, create a free project and select your preferred region.
-                      </p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className={`p-4 ${isLight ? 'bg-white border-slate-200' : 'bg-[#14151b] border-[#232530]'} border rounded-2xl space-y-2 shadow-sm`}>
+                    <div className="flex items-center justify-between">
+                      <span className="w-6 h-6 rounded-full bg-[#ff5500] text-black text-xs font-black flex items-center justify-center">1</span>
+                      <ExternalLink className={`w-4 h-4 ${isLight ? 'text-slate-400' : 'text-zinc-500'}`} />
                     </div>
+                    <h4 className={`text-xs font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>Open SQL Editor in Supabase</h4>
+                    <p className={`text-[11px] ${isLight ? 'text-slate-500' : 'text-zinc-400'} leading-relaxed`}>
+                      Go to your Supabase Project Dashboard and open the <strong>SQL Editor</strong> in the left sidebar.
+                    </p>
+                  </div>
 
-                    <div className="p-4 bg-[#181920] border border-[#272935] rounded-xl space-y-2">
-                      <span className="w-6 h-6 rounded-full bg-[#ff5500] text-black font-extrabold text-xs flex items-center justify-center font-mono">
-                        2
-                      </span>
-                      <strong className="text-white block text-xs">Execute SQL Schema</strong>
-                      <p className="text-zinc-400 text-[11px]">
-                        Go to Supabase <strong>SQL Editor</strong>, paste the script below or from <code className="text-[#ff5500] font-mono">/supabase/schema.sql</code>, and click <strong>RUN</strong>.
-                      </p>
+                  <div className={`p-4 ${isLight ? 'bg-white border-slate-200' : 'bg-[#14151b] border-[#232530]'} border rounded-2xl space-y-2 shadow-sm`}>
+                    <div className="flex items-center justify-between">
+                      <span className="w-6 h-6 rounded-full bg-[#ff5500] text-black text-xs font-black flex items-center justify-center">2</span>
+                      <Copy className={`w-4 h-4 ${isLight ? 'text-slate-400' : 'text-zinc-500'}`} />
                     </div>
+                    <h4 className={`text-xs font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>Paste Full schema.sql</h4>
+                    <p className={`text-[11px] ${isLight ? 'text-slate-500' : 'text-zinc-400'} leading-relaxed`}>
+                      Click the <strong>Copy SQL</strong> button below to copy the drop-in PostgreSQL migration script.
+                    </p>
+                  </div>
 
-                    <div className="p-4 bg-[#181920] border border-[#272935] rounded-xl space-y-2">
-                      <span className="w-6 h-6 rounded-full bg-[#ff5500] text-black font-extrabold text-xs flex items-center justify-center font-mono">
-                        3
-                      </span>
-                      <strong className="text-white block text-xs">Set Environment Keys</strong>
-                      <p className="text-zinc-400 text-[11px]">
-                        Provide <code className="text-[#ff5500] font-mono">SUPABASE_URL</code> and <code className="text-[#ff5500] font-mono">SUPABASE_ANON_KEY</code> in your environment or Vercel settings.
-                      </p>
+                  <div className={`p-4 ${isLight ? 'bg-white border-slate-200' : 'bg-[#14151b] border-[#232530]'} border rounded-2xl space-y-2 shadow-sm`}>
+                    <div className="flex items-center justify-between">
+                      <span className="w-6 h-6 rounded-full bg-[#ff5500] text-black text-xs font-black flex items-center justify-center">3</span>
+                      <CheckCircle2 className="w-4 h-4 text-emerald-500" />
                     </div>
+                    <h4 className={`text-xs font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>Click Run</h4>
+                    <p className={`text-[11px] ${isLight ? 'text-slate-500' : 'text-zinc-400'} leading-relaxed`}>
+                      Click <strong>RUN</strong>. Supabase creates the tables with RLS and seeds the luxury knitwear collection.
+                    </p>
                   </div>
                 </div>
 
-                {/* SQL Code Preview Block */}
-                <div className="p-5 bg-[#14151b] border border-[#232530] rounded-2xl space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="text-white font-bold text-xs">Full PostgreSQL Database Schema</span>
-                      <span className="text-[10px] bg-zinc-800 text-zinc-400 px-2 py-0.5 rounded font-mono">/supabase/schema.sql</span>
+                {/* Schema Code Block Preview with 1-Click Copy */}
+                <div className={`${isLight ? 'bg-white border-slate-200' : 'bg-[#14151b] border-[#232530]'} border rounded-2xl overflow-hidden shadow-sm`}>
+                  <div className={`p-4 ${isLight ? 'bg-slate-50 border-slate-200' : 'bg-[#171820] border-[#262835]'} border-b flex items-center justify-between`}>
+                    <div className="flex items-center gap-2 font-mono text-xs font-bold">
+                      <span className="text-[#ff5500]">018_Bokone_Schema.sql</span>
+                      <span className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-zinc-500'}`}>(Clean Drop & Recreate)</span>
                     </div>
 
                     <button
@@ -1306,16 +1270,25 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         setCopiedSql(true);
                         setTimeout(() => setCopiedSql(false), 2500);
                       }}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-[#20222a] hover:bg-[#2c2e3a] text-zinc-200 text-xs font-semibold rounded-lg border border-[#2c2e3c] transition-colors"
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-[#ff5500] text-black font-bold text-xs rounded-lg transition-colors hover:bg-[#e04a00]"
                     >
-                      {copiedSql ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                      {copiedSql ? <Check className="w-3.5 h-3.5 text-black" /> : <Copy className="w-3.5 h-3.5" />}
                       <span>{copiedSql ? 'Copied Full schema.sql!' : 'Copy SQL'}</span>
                     </button>
                   </div>
 
-                  <pre className="p-4 bg-[#0a0b0e] border border-[#1e2029] rounded-xl text-[11px] text-zinc-300 font-mono overflow-x-auto max-h-72 leading-relaxed">
-{`-- 1. PRODUCTS TABLE
-CREATE TABLE IF NOT EXISTS public.products (
+                  <pre className="p-4 bg-[#090a0d] text-emerald-400 font-mono text-xs overflow-x-auto max-h-72">
+{`-- 1. Enable Required Extensions
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- 2. Clean Drop for Idempotent Execution
+DROP TABLE IF EXISTS public.products CASCADE;
+DROP TABLE IF EXISTS public.orders CASCADE;
+DROP TABLE IF EXISTS public.community_photos CASCADE;
+DROP TABLE IF EXISTS public.store_settings CASCADE;
+
+-- 3. PRODUCTS TABLE
+CREATE TABLE public.products (
     id TEXT PRIMARY KEY,
     title TEXT NOT NULL,
     category TEXT NOT NULL,
@@ -1335,8 +1308,8 @@ CREATE TABLE IF NOT EXISTS public.products (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 2. ORDERS TABLE (PayFast Integrated)
-CREATE TABLE IF NOT EXISTS public.orders (
+-- 4. ORDERS TABLE (Includes order_number, delivery & customer details)
+CREATE TABLE public.orders (
     id TEXT PRIMARY KEY,
     order_number TEXT UNIQUE NOT NULL,
     customer JSONB NOT NULL,
@@ -1349,30 +1322,11 @@ CREATE TABLE IF NOT EXISTS public.orders (
     status TEXT NOT NULL DEFAULT 'paid',
     payment_method TEXT NOT NULL DEFAULT 'payfast',
     tracking_number TEXT,
+    courier_name TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 3. COMMUNITY STREETWEAR PHOTOS TABLE
-CREATE TABLE IF NOT EXISTS public.community_photos (
-    id TEXT PRIMARY KEY,
-    user_name TEXT NOT NULL,
-    handle TEXT NOT NULL,
-    location TEXT DEFAULT 'Klerksdorp, North West',
-    caption TEXT,
-    image_url TEXT NOT NULL,
-    product_tagged TEXT,
-    likes INTEGER DEFAULT 0,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- 4. ROW LEVEL SECURITY (RLS) POLICIES
-ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.community_photos ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Public Products" ON public.products FOR ALL USING (true);
-CREATE POLICY "Public Orders" ON public.orders FOR ALL USING (true);
-CREATE POLICY "Public Community" ON public.community_photos FOR ALL USING (true);`}
+-- 5. RLS POLICIES & SEED DATA INCLUDED IN FILE`}
                   </pre>
                 </div>
               </div>
@@ -1382,107 +1336,35 @@ CREATE POLICY "Public Community" ON public.community_photos FOR ALL USING (true)
             {/* 6. SETTINGS & THEME PAGE */}
             {/* ============================================================ */}
             {activePage === 'settings' && (
-              <div className="space-y-6 text-xs">
-                {/* Store Appearance Card */}
-                <div className="p-5 bg-[#14151b] border border-[#232530] rounded-2xl space-y-4">
-                  <h3 className="text-sm font-bold text-white uppercase tracking-wider font-display">
-                    Appearance & Theme Settings
-                  </h3>
-                  
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div
-                      onClick={onToggleTheme}
-                      className={`p-4 rounded-xl border cursor-pointer transition-all ${
-                        currentTheme === 'dark'
-                          ? 'bg-[#181920] border-[#ff5500] ring-1 ring-[#ff5500]'
-                          : 'bg-[#181920] border-[#272935] opacity-75'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <strong className="text-white text-xs flex items-center gap-2">
-                          <Moon className="w-4 h-4 text-indigo-400" />
-                          <span>Obsidian Dark Mode</span>
-                        </strong>
-                        {currentTheme === 'dark' && <Check className="w-4 h-4 text-[#ff5500]" />}
-                      </div>
-                      <p className="text-zinc-400 text-[11px]">
-                        Signature high-contrast dark palette with 018 Orange vibrant highlights.
-                      </p>
-                    </div>
-
-                    <div
-                      onClick={onToggleTheme}
-                      className={`p-4 rounded-xl border cursor-pointer transition-all ${
-                        currentTheme === 'light'
-                          ? 'bg-[#ffffff] text-black border-[#ff5500] ring-1 ring-[#ff5500]'
-                          : 'bg-[#181920] border-[#272935] opacity-75'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <strong className={`text-xs flex items-center gap-2 ${currentTheme === 'light' ? 'text-black' : 'text-white'}`}>
-                          <Sun className="w-4 h-4 text-amber-400" />
-                          <span>Clean Light Mode</span>
-                        </strong>
-                        {currentTheme === 'light' && <Check className="w-4 h-4 text-[#ff5500]" />}
-                      </div>
-                      <p className={currentTheme === 'light' ? 'text-zinc-600 text-[11px]' : 'text-zinc-400 text-[11px]'}>
-                        Crisp white canvases, dark typography, and constant 018 Orange buttons.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Studio & Logistics Configuration */}
-                <div className="p-5 bg-[#14151b] border border-[#232530] rounded-2xl space-y-4">
-                  <h3 className="text-sm font-bold text-white uppercase tracking-wider font-display">
-                    Klerksdorp Studio & Contact Info
+              <div className="space-y-6">
+                <div className={`p-5 ${isLight ? 'bg-white border-slate-200' : 'bg-[#14151b] border-[#232530]'} border rounded-2xl space-y-4 shadow-sm`}>
+                  <h3 className={`text-sm font-bold ${isLight ? 'text-slate-900' : 'text-white'} uppercase tracking-wider font-display`}>
+                    Store Brand & Interface Settings
                   </h3>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                    <div>
-                      <label className="text-[11px] text-zinc-400 block mb-1">Studio Location</label>
-                      <input
-                        type="text"
-                        readOnly
-                        value="Flamwood / Wilkoppies, Klerksdorp, North West, 2571"
-                        className="w-full bg-[#181920] border border-[#272935] text-zinc-300 p-2.5 rounded-xl font-mono text-xs"
-                      />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                    <div className={`p-4 ${isLight ? 'bg-slate-50 border-slate-200' : 'bg-[#181920] border-[#272935]'} border rounded-xl space-y-2`}>
+                      <span className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-zinc-400'} font-mono uppercase`}>Appearance Theme</span>
+                      <div className="flex items-center justify-between">
+                        <span className={`font-bold ${isLight ? 'text-slate-900' : 'text-white'} capitalize`}>{currentTheme} Mode</span>
+                        <button
+                          onClick={onToggleTheme}
+                          className="px-3 py-1.5 bg-[#ff5500] text-black font-bold rounded-lg text-xs"
+                        >
+                          Switch to {currentTheme === 'dark' ? 'Light' : 'Dark'}
+                        </button>
+                      </div>
                     </div>
 
-                    <div>
-                      <label className="text-[11px] text-zinc-400 block mb-1">WhatsApp Customer Line</label>
-                      <input
-                        type="text"
-                        readOnly
-                        value="+27 64 062 9602"
-                        className="w-full bg-[#181920] border border-[#272935] text-zinc-300 p-2.5 rounded-xl font-mono text-xs"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-[11px] text-zinc-400 block mb-1">Free Shipping Threshold</label>
-                      <input
-                        type="text"
-                        readOnly
-                        value="R999.00 (South Africa Nationwide)"
-                        className="w-full bg-[#181920] border border-[#272935] text-zinc-300 p-2.5 rounded-xl font-mono text-xs"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-[11px] text-zinc-400 block mb-1">Payment Gateway</label>
-                      <input
-                        type="text"
-                        readOnly
-                        value="PayFast South Africa (Instant EFT, Cards, Capitec Pay)"
-                        className="w-full bg-[#181920] border border-[#272935] text-zinc-300 p-2.5 rounded-xl font-mono text-xs"
-                      />
+                    <div className={`p-4 ${isLight ? 'bg-slate-50 border-slate-200' : 'bg-[#181920] border-[#272935]'} border rounded-xl space-y-2`}>
+                      <span className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-zinc-400'} font-mono uppercase`}>Studio Hotline</span>
+                      <p className={`font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>+27 64 062 9602 (WhatsApp Direct)</p>
+                      <p className={isLight ? 'text-slate-500' : 'text-zinc-500'}>Wilkoppies / Flamwood, Klerksdorp, North West</p>
                     </div>
                   </div>
                 </div>
               </div>
             )}
-
           </div>
         </div>
       </div>
@@ -1491,63 +1373,124 @@ CREATE POLICY "Public Community" ON public.community_photos FOR ALL USING (true)
       {/* MODAL: ADD NEW GARMENT */}
       {/* ============================================================ */}
       {isAddProductOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
-          <div className="relative w-full max-w-lg bg-[#14151a] border border-[#272935] rounded-2xl p-5 sm:p-6 space-y-4 max-h-[90vh] overflow-y-auto text-left">
-            <div className="flex items-center justify-between border-b border-[#21232d] pb-3">
-              <h3 className="font-black text-white uppercase text-base font-display flex items-center gap-2">
-                <Plus className="w-4 h-4 text-[#ff5500]" />
-                <span>Add Garment to 018 Catalog</span>
-              </h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+          <div className={`w-full max-w-lg ${isLight ? 'bg-white border-slate-200' : 'bg-[#15161c] border-[#292b38]'} border rounded-3xl p-6 space-y-4 shadow-2xl animate-scaleUp text-left max-h-[90vh] overflow-y-auto`}>
+            <div className="flex items-center justify-between border-b border-inherit pb-3">
+              <div className="flex items-center gap-2">
+                <Package className="w-5 h-5 text-[#ff5500]" />
+                <h3 className={`text-base font-black ${isLight ? 'text-slate-900' : 'text-white'} uppercase font-display`}>
+                  Add 018 Garment to Inventory
+                </h3>
+              </div>
               <button
-                onClick={() => {
-                  setIsAddProductOpen(false);
-                  if (videoRef.current && videoRef.current.srcObject) {
-                    const s = videoRef.current.srcObject as MediaStream;
-                    s.getTracks().forEach((t) => t.stop());
-                  }
-                  setCameraActive(false);
-                }}
-                className="p-1 text-zinc-400 hover:text-white"
+                onClick={() => setIsAddProductOpen(false)}
+                className={`p-1.5 ${isLight ? 'text-slate-400 hover:text-slate-900' : 'text-zinc-400 hover:text-white'}`}
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             <form onSubmit={handleCreateProduct} className="space-y-4 text-xs">
-              {/* Image capture or gallery */}
-              <div className="space-y-2">
-                <label className="text-[11px] font-semibold text-zinc-300 block">
-                  Garment Photo (Camera Snap or Upload)
-                </label>
+              <div className="space-y-1">
+                <label className={`block font-bold ${isLight ? 'text-slate-700' : 'text-zinc-300'}`}>Garment Title *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g., 018 Bokone Heavyweight Polo"
+                  value={newTitle}
+                  onChange={(e) => setNewTitle(e.target.value)}
+                  className={`w-full ${isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-[#1a1b22] border-[#292b38] text-white'} border p-2.5 rounded-xl focus:outline-none focus:border-[#ff5500]`}
+                />
+              </div>
 
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className={`block font-bold ${isLight ? 'text-slate-700' : 'text-zinc-300'}`}>Category</label>
+                  <select
+                    value={newCategory}
+                    onChange={(e) => setNewCategory(e.target.value as ProductCategory)}
+                    className={`w-full ${isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-[#1a1b22] border-[#292b38] text-white'} border p-2.5 rounded-xl focus:outline-none focus:border-[#ff5500]`}
+                  >
+                    <option value="Luxury Knitwear">Luxury Knitwear</option>
+                    <option value="Caps">Caps</option>
+                    <option value="Hats">Hats</option>
+                    <option value="Bags">Bags</option>
+                    <option value="Accessories">Accessories</option>
+                    <option value="Hoodies & Sweats">Hoodies & Sweats</option>
+                    <option value="Combos">Combos</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className={`block font-bold ${isLight ? 'text-slate-700' : 'text-zinc-300'}`}>Stock Units</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={newStock}
+                    onChange={(e) => setNewStock(e.target.value)}
+                    className={`w-full ${isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-[#1a1b22] border-[#292b38] text-white'} border p-2.5 rounded-xl focus:outline-none focus:border-[#ff5500]`}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className={`block font-bold ${isLight ? 'text-slate-700' : 'text-zinc-300'}`}>Price (ZAR R) *</label>
+                  <input
+                    type="number"
+                    required
+                    min="1"
+                    value={newPrice}
+                    onChange={(e) => setNewPrice(e.target.value)}
+                    className={`w-full ${isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-[#1a1b22] border-[#292b38] text-white'} border p-2.5 rounded-xl focus:outline-none focus:border-[#ff5500] font-mono`}
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className={`block font-bold ${isLight ? 'text-slate-700' : 'text-zinc-300'}`}>Was Price (R)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="Optional original price"
+                    value={newOriginalPrice}
+                    onChange={(e) => setNewOriginalPrice(e.target.value)}
+                    className={`w-full ${isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-[#1a1b22] border-[#292b38] text-white'} border p-2.5 rounded-xl focus:outline-none focus:border-[#ff5500] font-mono`}
+                  />
+                </div>
+              </div>
+
+              {/* Garment Image with Camera & File Upload */}
+              <div className="space-y-2">
+                <label className={`block font-bold ${isLight ? 'text-slate-700' : 'text-zinc-300'}`}>Garment Image Photo</label>
+                
                 {cameraActive ? (
                   <div className="space-y-2">
                     <video ref={videoRef} autoPlay playsInline className="w-full h-48 bg-black rounded-xl object-cover" />
                     <button
                       type="button"
                       onClick={captureAdminPhoto}
-                      className="w-full py-2 bg-[#ff5500] text-black font-black uppercase tracking-wider rounded-lg"
+                      className="w-full py-2 bg-[#ff5500] text-black font-bold rounded-xl text-xs"
                     >
-                      Capture Photo
+                      📸 Snap Snapshot
                     </button>
                   </div>
                 ) : newImage ? (
-                  <div className="relative w-full h-44 bg-black rounded-xl overflow-hidden group">
+                  <div className="relative h-40 bg-zinc-900 rounded-xl overflow-hidden">
                     <img src={newImage} alt="Preview" className="w-full h-full object-cover" />
                     <button
                       type="button"
                       onClick={() => setNewImage('')}
-                      className="absolute top-2 right-2 p-1.5 bg-black/80 text-white rounded-lg"
+                      className="absolute top-2 right-2 p-1.5 bg-black/70 text-white rounded-lg"
                     >
                       <X className="w-4 h-4" />
                     </button>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="flex gap-2">
                     <button
                       type="button"
                       onClick={startCamera}
-                      className="py-3 px-3 bg-[#1e2029] hover:bg-[#282a36] text-zinc-200 text-xs font-bold rounded-xl border border-[#2d2f3c] flex items-center justify-center gap-2"
+                      className={`flex-1 py-3 ${isLight ? 'bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-200' : 'bg-[#1a1b22] hover:bg-[#22242c] text-zinc-300 border-[#2a2c38]'} border rounded-xl flex items-center justify-center gap-2 font-semibold`}
                     >
                       <Camera className="w-4 h-4 text-[#ff5500]" />
                       <span>Take Photo</span>
@@ -1556,151 +1499,114 @@ CREATE POLICY "Public Community" ON public.community_photos FOR ALL USING (true)
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className="py-3 px-3 bg-[#1e2029] hover:bg-[#282a36] text-zinc-200 text-xs font-bold rounded-xl border border-[#2d2f3c] flex items-center justify-center gap-2"
+                      className={`flex-1 py-3 ${isLight ? 'bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-200' : 'bg-[#1a1b22] hover:bg-[#22242c] text-zinc-300 border-[#2a2c38]'} border rounded-xl flex items-center justify-center gap-2 font-semibold`}
                     >
-                      <Upload className="w-4 h-4 text-zinc-400" />
-                      <span>Upload Gallery</span>
+                      <Upload className="w-4 h-4 text-blue-500" />
+                      <span>Upload File</span>
                     </button>
                     <input
-                      ref={fileInputRef}
                       type="file"
-                      accept="image/*"
+                      ref={fileInputRef}
                       onChange={handleAdminFile}
+                      accept="image/*"
                       className="hidden"
                     />
                   </div>
                 )}
               </div>
 
-              {/* Form Inputs */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="sm:col-span-2">
-                  <label className="text-[11px] text-zinc-400 block mb-1">Title</label>
-                  <input
-                    type="text"
-                    required
-                    value={newTitle}
-                    onChange={(e) => setNewTitle(e.target.value)}
-                    placeholder="e.g. 018 Jacquard Winter Beanie"
-                    className="w-full bg-[#181920] border border-[#272935] text-white text-xs px-3 py-2.5 rounded-xl focus:outline-none focus:border-[#ff5500]"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-[11px] text-zinc-400 block mb-1">Category</label>
-                  <select
-                    value={newCategory}
-                    onChange={(e) => setNewCategory(e.target.value as ProductCategory)}
-                    className="w-full bg-[#181920] border border-[#272935] text-white text-xs px-3 py-2.5 rounded-xl focus:outline-none focus:border-[#ff5500]"
-                  >
-                    <option value="Caps">Caps</option>
-                    <option value="Luxury Knitwear">Luxury Knitwear</option>
-                    <option value="Hoodies & Sweats">Hoodies & Sweats</option>
-                    <option value="Combos">Combos</option>
-                    <option value="Polos & Knits">Polos & Knits</option>
-                    <option value="Dresses">Dresses</option>
-                    <option value="T-Shirts">T-Shirts</option>
-                    <option value="Bags">Bags</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="text-[11px] text-zinc-400 block mb-1">Tag / Badge</label>
-                  <select
-                    value={newTag}
-                    onChange={(e) => setNewTag(e.target.value as any)}
-                    className="w-full bg-[#181920] border border-[#272935] text-white text-xs px-3 py-2.5 rounded-xl focus:outline-none focus:border-[#ff5500]"
-                  >
-                    <option value="NEW DROP">NEW DROP</option>
-                    <option value="BESTSELLER">BESTSELLER</option>
-                    <option value="LIMITED">LIMITED</option>
-                    <option value="SAVE R700">SAVE R700</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="text-[11px] text-zinc-400 block mb-1">Price (ZAR)</label>
-                  <input
-                    type="number"
-                    required
-                    value={newPrice}
-                    onChange={(e) => setNewPrice(e.target.value)}
-                    className="w-full bg-[#181920] border border-[#272935] text-white text-xs px-3 py-2.5 rounded-xl focus:outline-none focus:border-[#ff5500]"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-[11px] text-zinc-400 block mb-1">Stock Units</label>
-                  <input
-                    type="number"
-                    required
-                    value={newStock}
-                    onChange={(e) => setNewStock(e.target.value)}
-                    className="w-full bg-[#181920] border border-[#272935] text-white text-xs px-3 py-2.5 rounded-xl focus:outline-none focus:border-[#ff5500]"
-                  />
-                </div>
-
-                <div className="sm:col-span-2">
-                  <label className="text-[11px] text-zinc-400 block mb-1">Description</label>
-                  <textarea
-                    rows={2}
-                    value={newDescription}
-                    onChange={(e) => setNewDescription(e.target.value)}
-                    placeholder="Bespoke jacquard knit engineered in North West..."
-                    className="w-full bg-[#181920] border border-[#272935] text-white text-xs p-3 rounded-xl focus:outline-none focus:border-[#ff5500]"
-                  />
-                </div>
+              <div className="space-y-1">
+                <label className={`block font-bold ${isLight ? 'text-slate-700' : 'text-zinc-300'}`}>Description</label>
+                <textarea
+                  rows={2}
+                  placeholder="Engineered in Klerksdorp, North West..."
+                  value={newDescription}
+                  onChange={(e) => setNewDescription(e.target.value)}
+                  className={`w-full ${isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-[#1a1b22] border-[#292b38] text-white'} border p-2.5 rounded-xl focus:outline-none focus:border-[#ff5500]`}
+                />
               </div>
 
-              <button
-                type="submit"
-                disabled={savingProduct}
-                className="w-full py-3.5 bg-[#ff5500] hover:bg-[#e04a00] text-black font-black text-xs uppercase tracking-wider rounded-xl shadow-lg shadow-[#ff5500]/25 transition-all flex items-center justify-center gap-2"
-              >
-                <span>{savingProduct ? 'Saving to Database...' : 'Save & Publish Garment'}</span>
-              </button>
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsAddProductOpen(false)}
+                  className={`px-4 py-2 ${isLight ? 'bg-slate-100 text-slate-700' : 'bg-zinc-800 text-zinc-300'} rounded-xl font-semibold`}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingProduct}
+                  className="px-5 py-2 bg-[#ff5500] hover:bg-[#e04a00] text-black font-black uppercase tracking-wider rounded-xl transition-colors shadow-md shadow-[#ff5500]/20"
+                >
+                  {savingProduct ? 'Saving...' : 'Save to Catalog'}
+                </button>
+              </div>
             </form>
           </div>
         </div>
       )}
 
       {/* ============================================================ */}
-      {/* MODAL: ORDER FULFILLMENT & TRACKING */}
+      {/* MODAL: MANAGE ORDER / COURIER WAYBILL */}
       {/* ============================================================ */}
       {viewingOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
-          <div className="relative w-full max-w-lg bg-[#14151a] border border-[#272935] rounded-2xl p-5 sm:p-6 space-y-4 max-h-[90vh] overflow-y-auto text-left">
-            <div className="flex items-center justify-between border-b border-[#21232d] pb-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+          <div className={`w-full max-w-lg ${isLight ? 'bg-white border-slate-200' : 'bg-[#15161c] border-[#292b38]'} border rounded-3xl p-6 space-y-4 shadow-2xl animate-scaleUp text-left max-h-[90vh] overflow-y-auto`}>
+            <div className="flex items-center justify-between border-b border-inherit pb-3">
               <div>
-                <h3 className="font-black text-white uppercase text-base font-display">
-                  Order #{viewingOrder.orderNumber}
+                <span className="font-mono font-bold text-xs text-[#ff5500]">{viewingOrder.orderNumber}</span>
+                <h3 className={`text-base font-black ${isLight ? 'text-slate-900' : 'text-white'} uppercase font-display`}>
+                  Fulfillment & Tracking
                 </h3>
-                <span className="text-[11px] text-zinc-400">
-                  {new Date(viewingOrder.createdAt).toLocaleString()}
-                </span>
               </div>
               <button
                 onClick={() => setViewingOrder(null)}
-                className="p-1 text-zinc-400 hover:text-white"
+                className={`p-1.5 ${isLight ? 'text-slate-400 hover:text-slate-900' : 'text-zinc-400 hover:text-white'}`}
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Status updates */}
             <div className="space-y-3 text-xs">
-              <div>
-                <label className="text-[11px] text-zinc-400 block mb-1 font-semibold uppercase">Update Order Status</label>
-                <div className="grid grid-cols-3 gap-2">
+              <div className="space-y-1">
+                <label className={`block font-bold ${isLight ? 'text-slate-700' : 'text-zinc-300'}`}>Courier Tracking / Waybill Number</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="e.g. TCG-018-8472910"
+                    value={trackingInput}
+                    onChange={(e) => setTrackingInput(e.target.value)}
+                    className={`flex-1 ${isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-[#1a1b22] border-[#292b38] text-white'} border p-2.5 rounded-xl font-mono text-xs focus:outline-none focus:border-[#ff5500]`}
+                  />
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await onUpdateOrderStatus(viewingOrder.id, 'shipped', trackingInput);
+                      setViewingOrder(null);
+                    }}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs"
+                  >
+                    Save & Mark Shipped
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-1 pt-2">
+                <label className={`block font-bold ${isLight ? 'text-slate-700' : 'text-zinc-300'}`}>Update Order Status</label>
+                <div className="grid grid-cols-2 gap-2">
                   {(['paid', 'processing', 'shipped', 'delivered', 'cancelled'] as OrderStatus[]).map((st) => (
                     <button
                       key={st}
                       type="button"
-                      onClick={() => onUpdateOrderStatus(viewingOrder.id, st, trackingInput)}
-                      className={`py-2 px-2 rounded-xl text-xs font-bold uppercase transition-all ${
+                      onClick={async () => {
+                        await onUpdateOrderStatus(viewingOrder.id, st, trackingInput);
+                        setViewingOrder(null);
+                      }}
+                      className={`py-2 px-3 rounded-xl font-semibold capitalize text-xs border transition-colors ${
                         viewingOrder.status === st
-                          ? 'bg-[#ff5500] text-black'
-                          : 'bg-[#1e2029] text-zinc-300 hover:bg-[#282a38]'
+                          ? 'bg-[#ff5500] text-black border-[#ff5500]'
+                          : isLight ? 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100' : 'bg-[#1a1b22] border-[#292b38] text-zinc-300 hover:bg-[#22242c]'
                       }`}
                     >
                       {st}
@@ -1708,51 +1614,10 @@ CREATE POLICY "Public Community" ON public.community_photos FOR ALL USING (true)
                   ))}
                 </div>
               </div>
-
-              <div>
-                <label className="text-[11px] text-zinc-400 block mb-1 font-semibold uppercase">Courier Tracking Number</label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={trackingInput}
-                    onChange={(e) => setTrackingInput(e.target.value)}
-                    placeholder="e.g. TCG-018-984729"
-                    className="flex-1 bg-[#181920] border border-[#272935] text-white text-xs px-3 py-2 rounded-xl font-mono"
-                  />
-                  <button
-                    onClick={() => {
-                      onUpdateOrderStatus(viewingOrder.id, viewingOrder.status, trackingInput);
-                      alert('Tracking number updated!');
-                    }}
-                    className="px-3 py-2 bg-[#ff5500] text-black font-bold text-xs rounded-xl"
-                  >
-                    Save
-                  </button>
-                </div>
-              </div>
-
-              {/* Items List */}
-              <div className="pt-2 border-t border-[#21232d] space-y-2">
-                <span className="text-[11px] text-zinc-400 uppercase font-bold block">Ordered Garments</span>
-                {viewingOrder.items.map((item, i) => (
-                  <div key={i} className="flex items-center justify-between p-2.5 bg-[#181920] rounded-xl">
-                    <div>
-                      <div className="font-bold text-white text-xs">{item.product.title}</div>
-                      <div className="text-[10px] text-zinc-400">
-                        Size: {item.selectedSize} • Color: {item.selectedColor} • Qty: {item.quantity}
-                      </div>
-                    </div>
-                    <span className="font-mono font-bold text-[#ff5500]">
-                      R{(item.product.price * item.quantity).toLocaleString()}
-                    </span>
-                  </div>
-                ))}
-              </div>
             </div>
           </div>
         </div>
       )}
-
     </div>
   );
 };
