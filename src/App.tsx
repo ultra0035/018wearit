@@ -131,42 +131,47 @@ export default function App() {
     }
   }, [wishlist]);
 
-  // Load API Data from Backend
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [prodRes, commRes, orderRes] = await Promise.all([
-          fetch('/api/products').catch(() => null),
-          fetch('/api/community').catch(() => null),
-          fetch('/api/orders').catch(() => null)
-        ]);
+  // Sync with Backend (API & Supabase)
+  const syncWithBackend = async () => {
+    try {
+      const [prodRes, commRes, orderRes] = await Promise.all([
+        fetch('/api/products').catch(() => null),
+        fetch('/api/community').catch(() => null),
+        fetch('/api/orders').catch(() => null)
+      ]);
 
-        if (prodRes && prodRes.ok) {
-          const data = await prodRes.json();
-          if (data.products && data.products.length > 0) {
-            setProducts(data.products);
-          }
+      if (prodRes && prodRes.ok) {
+        const data = await prodRes.json();
+        if (data.products && data.products.length > 0) {
+          setProducts(data.products);
         }
-
-        if (commRes && commRes.ok) {
-          const data = await commRes.json();
-          if (data.photos) {
-            setCommunityPhotos(data.photos);
-          }
-        }
-
-        if (orderRes && orderRes.ok) {
-          const data = await orderRes.json();
-          if (data.orders) {
-            setOrders(data.orders);
-          }
-        }
-      } catch (err) {
-        console.warn('API data fetch notice:', err);
       }
-    };
 
-    fetchData();
+      if (commRes && commRes.ok) {
+        const data = await commRes.json();
+        if (data.photos) {
+          setCommunityPhotos(data.photos);
+        }
+      }
+
+      if (orderRes && orderRes.ok) {
+        const data = await orderRes.json();
+        if (data.orders) {
+          setOrders(data.orders);
+        }
+      }
+    } catch (err) {
+      console.warn('API data sync notice:', err);
+    }
+  };
+
+  // Load API Data from Backend & Setup Periodic Sync
+  useEffect(() => {
+    syncWithBackend();
+
+    // Auto-sync every 15s to keep storefront and admin real-time
+    const interval = setInterval(syncWithBackend, 15000);
+    return () => clearInterval(interval);
   }, []);
 
   // Cart operations
@@ -312,6 +317,46 @@ export default function App() {
       await fetch(`/api/products/${id}`, { method: 'DELETE' });
       setProducts((prev) => prev.filter((p) => p.id !== id));
       showToast('Product removed from catalog');
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleAdminUpdateStock = async (id: string, newStock: number) => {
+    try {
+      const res = await fetch(`/api/products/${id}/stock`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stockQuantity: newStock })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setProducts((prev) =>
+          prev.map((p) =>
+            p.id === id ? { ...p, stockQuantity: newStock, inStock: newStock > 0 } : p
+          )
+        );
+        showToast(`Stock updated to ${newStock} units`);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleAdminUpdateProduct = async (id: string, updates: Partial<Product>) => {
+    try {
+      const res = await fetch(`/api/products/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates)
+      });
+      const data = await res.json();
+      if (data.success && data.product) {
+        setProducts((prev) =>
+          prev.map((p) => (p.id === id ? { ...p, ...data.product } : p))
+        );
+        showToast(`Updated product "${data.product.title || ''}"`);
+      }
     } catch (e) {
       console.error(e);
     }
@@ -577,6 +622,9 @@ export default function App() {
         onAddProduct={handleAdminAddProduct}
         onUpdateOrderStatus={handleAdminUpdateOrderStatus}
         onDeleteProduct={handleAdminDeleteProduct}
+        onUpdateStock={handleAdminUpdateStock}
+        onUpdateProduct={handleAdminUpdateProduct}
+        onRefreshData={syncWithBackend}
         currentTheme={theme}
         onToggleTheme={handleToggleTheme}
       />

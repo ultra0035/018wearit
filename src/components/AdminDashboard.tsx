@@ -62,6 +62,9 @@ interface AdminDashboardProps {
   onAddProduct: (product: Partial<Product>) => Promise<void>;
   onUpdateOrderStatus: (orderId: string, status: OrderStatus, tracking?: string) => Promise<void>;
   onDeleteProduct: (id: string) => Promise<void>;
+  onUpdateStock?: (id: string, newStock: number) => Promise<void>;
+  onUpdateProduct?: (id: string, updates: Partial<Product>) => Promise<void>;
+  onRefreshData?: () => Promise<void>;
   currentTheme: ThemeMode;
   onToggleTheme: () => void;
 }
@@ -77,6 +80,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onAddProduct,
   onUpdateOrderStatus,
   onDeleteProduct,
+  onUpdateStock,
+  onUpdateProduct,
+  onRefreshData,
   currentTheme,
   onToggleTheme
 }) => {
@@ -112,16 +118,27 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   // Order Details Modal
   const [viewingOrder, setViewingOrder] = useState<Order | null>(null);
   const [trackingInput, setTrackingInput] = useState('');
+  const [deletingProductId, setDeletingProductId] = useState<string | null>(null);
 
-  // Supabase connection state
+  // Supabase dynamic config state
   const [supabaseStatus, setSupabaseStatus] = useState<SupabaseStatus>({
     isConfigured: false,
     connected: false,
     url: '',
     message: 'Checking connection...'
   });
+  const [customDbUrl, setCustomDbUrl] = useState(() => {
+    return localStorage.getItem('supabase_url') || '';
+  });
+  const [customDbKey, setCustomDbKey] = useState(() => {
+    return localStorage.getItem('supabase_key') || '';
+  });
+  const [savingConfig, setSavingConfig] = useState(false);
+  const [seedingDb, setSeedingDb] = useState(false);
+  const [seedFeedback, setSeedFeedback] = useState<string | null>(null);
   const [checkingDb, setCheckingDb] = useState(false);
   const [copiedSql, setCopiedSql] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const fetchDbStatus = async () => {
     setCheckingDb(true);
@@ -130,6 +147,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       if (res.ok) {
         const data = await res.json();
         setSupabaseStatus(data);
+        if (data.url && !customDbUrl) {
+          setCustomDbUrl(data.url);
+        }
       }
     } catch (e) {
       setSupabaseStatus({
@@ -141,6 +161,84 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     } finally {
       setCheckingDb(false);
     }
+  };
+
+  const handleSaveSupabaseConfig = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!customDbUrl || !customDbKey) return;
+    setSavingConfig(true);
+    setSeedFeedback(null);
+    try {
+      const cleanUrl = customDbUrl.trim();
+      const cleanKey = customDbKey.trim();
+
+      // Store in localStorage for persistent access
+      localStorage.setItem('supabase_url', cleanUrl);
+      localStorage.setItem('supabase_key', cleanKey);
+
+      const res = await fetch('/api/supabase/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url: cleanUrl,
+          key: cleanKey,
+          autoSeed: true
+        })
+      });
+      const data = await res.json();
+      setSupabaseStatus(data);
+      if (data.connected) {
+        setSeedFeedback('Supabase connected successfully! Database tables verified and synced with live store.');
+        if (onRefreshData) await onRefreshData();
+      } else {
+        setSeedFeedback(`Supabase responded: ${data.message || 'Check your URL and API Key'}`);
+      }
+    } catch (err: any) {
+      setSeedFeedback(err?.message || 'Connection failed');
+    } finally {
+      setSavingConfig(false);
+    }
+  };
+
+  // Auto-connect if credentials already saved in localStorage
+  useEffect(() => {
+    const savedUrl = localStorage.getItem('supabase_url');
+    const savedKey = localStorage.getItem('supabase_key');
+    if (savedUrl && savedKey) {
+      fetch('/api/supabase/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: savedUrl, key: savedKey, autoSeed: false })
+      })
+        .then((r) => r.json())
+        .then((data) => {
+          setSupabaseStatus(data);
+        })
+        .catch(() => {});
+    }
+  }, []);
+
+  const handleSeedDatabase = async () => {
+    setSeedingDb(true);
+    setSeedFeedback(null);
+    try {
+      const res = await fetch('/api/supabase/seed', { method: 'POST' });
+      const data = await res.json();
+      setSeedFeedback(data.message || 'Database seeding completed.');
+      if (onRefreshData) await onRefreshData();
+      await fetchDbStatus();
+    } catch (err: any) {
+      setSeedFeedback(err?.message || 'Seeding failed');
+    } finally {
+      setSeedingDb(false);
+    }
+  };
+
+  const handleManualRefresh = async () => {
+    setIsRefreshing(true);
+    if (onRefreshData) await onRefreshData();
+    await fetchDbStatus();
+    setTimeout(() => setIsRefreshing(false), 600);
   };
 
   useEffect(() => {
@@ -565,6 +663,24 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 />
               </div>
 
+              {/* Database Quick Access Button */}
+              <button
+                onClick={() => setActivePage('sql')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-mono font-bold transition-all ${
+                  supabaseStatus.connected
+                    ? isLight
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                      : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20'
+                    : isLight
+                      ? 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
+                      : 'bg-amber-500/10 text-amber-400 border-amber-500/30 hover:bg-amber-500/20'
+                }`}
+                title="Manage Live Supabase Connection & Tables"
+              >
+                <Database className="w-3.5 h-3.5" />
+                <span className="hidden md:inline">{supabaseStatus.connected ? 'Supabase Connected' : 'Connect DB'}</span>
+              </button>
+
               {/* Add Product Trigger Button */}
               <button
                 onClick={() => {
@@ -945,32 +1061,80 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                               </div>
                             </td>
                             <td className="p-4">
-                              {p.stockQuantity <= 0 ? (
-                                <span className="px-2 py-0.5 bg-red-500/10 text-red-500 font-bold rounded text-[10px]">
-                                  Sold Out
-                                </span>
-                              ) : p.stockQuantity <= 5 ? (
-                                <span className="px-2 py-0.5 bg-amber-500/10 text-amber-500 font-bold rounded text-[10px]">
-                                  Low Stock ({p.stockQuantity})
-                                </span>
-                              ) : (
-                                <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-500 font-bold rounded text-[10px]">
-                                  In Stock ({p.stockQuantity})
-                                </span>
-                              )}
+                              <div className="flex items-center gap-2">
+                                {p.stockQuantity <= 0 ? (
+                                  <span className="px-2 py-0.5 bg-red-500/10 text-red-500 font-bold rounded text-[10px]">
+                                    Sold Out (0)
+                                  </span>
+                                ) : p.stockQuantity <= 5 ? (
+                                  <span className="px-2 py-0.5 bg-amber-500/10 text-amber-500 font-bold rounded text-[10px]">
+                                    Low Stock ({p.stockQuantity})
+                                  </span>
+                                ) : (
+                                  <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-500 font-bold rounded text-[10px]">
+                                    In Stock ({p.stockQuantity})
+                                  </span>
+                                )}
+
+                                {onUpdateStock && (
+                                  <div className="flex items-center gap-1 ml-2">
+                                    <button
+                                      onClick={() => onUpdateStock(p.id, Math.max(0, p.stockQuantity - 1))}
+                                      title="Decrease stock by 1"
+                                      className={`w-5 h-5 flex items-center justify-center rounded text-[10px] font-bold ${
+                                        isLight ? 'bg-slate-100 hover:bg-slate-200 text-slate-700' : 'bg-[#22242f] hover:bg-[#2c2f3d] text-zinc-300'
+                                      }`}
+                                    >
+                                      -1
+                                    </button>
+                                    <button
+                                      onClick={() => onUpdateStock(p.id, p.stockQuantity + 5)}
+                                      title="Add 5 units to stock"
+                                      className={`px-1.5 h-5 flex items-center justify-center rounded text-[10px] font-bold ${
+                                        isLight ? 'bg-slate-100 hover:bg-slate-200 text-[#ff5500]' : 'bg-[#22242f] hover:bg-[#2c2f3d] text-[#ff5500]'
+                                      }`}
+                                    >
+                                      +5
+                                    </button>
+                                    <button
+                                      onClick={() => onUpdateStock(p.id, 20)}
+                                      title="Restock to 20 units"
+                                      className="px-1.5 h-5 flex items-center justify-center rounded text-[10px] font-bold bg-[#ff5500]/10 text-[#ff5500] hover:bg-[#ff5500] hover:text-black transition-colors"
+                                    >
+                                      20
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
                             </td>
                             <td className="p-4 text-right">
-                              <button
-                                onClick={() => {
-                                  if (confirm(`Delete "${p.title}" from store inventory?`)) {
-                                    onDeleteProduct(p.id);
-                                  }
-                                }}
-                                className={`p-2 ${isLight ? 'text-slate-400 hover:text-red-600 hover:bg-red-50' : 'text-zinc-500 hover:text-red-400 hover:bg-red-500/10'} rounded-lg transition-colors`}
-                                title="Delete Product"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
+                              {deletingProductId === p.id ? (
+                                <div className="flex items-center justify-end gap-1.5">
+                                  <button
+                                    onClick={async () => {
+                                      await onDeleteProduct(p.id);
+                                      setDeletingProductId(null);
+                                    }}
+                                    className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white rounded-lg text-[10px] font-bold"
+                                  >
+                                    Confirm
+                                  </button>
+                                  <button
+                                    onClick={() => setDeletingProductId(null)}
+                                    className={`px-2 py-1 ${isLight ? 'bg-slate-200 text-slate-700' : 'bg-[#22242f] text-zinc-300'} rounded-lg text-[10px] font-bold`}
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              ) : (
+                                <button
+                                  onClick={() => setDeletingProductId(p.id)}
+                                  className={`p-2 ${isLight ? 'text-slate-400 hover:text-red-600 hover:bg-red-50' : 'text-zinc-500 hover:text-red-400 hover:bg-red-500/10'} rounded-lg transition-colors`}
+                                  title="Delete Product"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              )}
                             </td>
                           </tr>
                         ))}
@@ -1180,13 +1344,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         <Database className="w-6 h-6" />
                       </div>
                       <div>
-                        <h2 className={`text-base font-black ${isLight ? 'text-slate-900' : 'text-white'} uppercase font-display tracking-tight`}>
-                          Supabase PostgreSQL Database
-                        </h2>
-                        <p className={`text-xs ${isLight ? 'text-slate-500' : 'text-zinc-400'}`}>
-                          {supabaseStatus.connected
+                        <div className="flex items-center gap-2">
+                          <h2 className={`text-base font-black ${isLight ? 'text-slate-900' : 'text-white'} uppercase font-display tracking-tight`}>
+                            Supabase PostgreSQL Database
+                          </h2>
+                          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase ${
+                            supabaseStatus.connected ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-500/10 text-amber-500'
+                          }`}>
+                            {supabaseStatus.connected ? '● LIVE SYNC' : '○ FALLBACK'}
+                          </span>
+                        </div>
+                        <p className={`text-xs ${isLight ? 'text-slate-500' : 'text-zinc-400'} mt-0.5`}>
+                          {supabaseStatus.message || (supabaseStatus.connected
                             ? 'Connected to live cloud Supabase database'
-                            : 'Active fallback mode. Run schema.sql in Supabase to sync live.'}
+                            : 'Active fallback mode. Enter credentials or run schema.sql in Supabase to sync live.')}
                         </p>
                       </div>
                     </div>
@@ -1202,6 +1373,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       </button>
 
                       <button
+                        onClick={handleSeedDatabase}
+                        disabled={seedingDb}
+                        className="flex items-center gap-2 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-md"
+                      >
+                        <Sparkles className={`w-3.5 h-3.5 ${seedingDb ? 'animate-spin' : ''}`} />
+                        <span>{seedingDb ? 'Seeding...' : 'Seed Database'}</span>
+                      </button>
+
+                      <button
                         onClick={handleDownloadSql}
                         className="flex items-center gap-2 px-3.5 py-2 bg-[#ff5500] hover:bg-[#e04a00] text-black rounded-xl text-xs font-bold transition-all shadow-md shadow-[#ff5500]/20"
                       >
@@ -1210,6 +1390,83 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       </button>
                     </div>
                   </div>
+
+                  {seedFeedback && (
+                    <div className="p-3 bg-[#ff5500]/10 border border-[#ff5500]/30 rounded-xl text-xs text-[#ff5500] font-mono">
+                      {seedFeedback}
+                    </div>
+                  )}
+                </div>
+
+                {/* Direct Connect & Runtime Configuration Form */}
+                <div className={`p-6 ${isLight ? 'bg-white border-slate-200' : 'bg-[#14151b] border-[#232530]'} border rounded-2xl space-y-4 shadow-sm text-xs`}>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className={`text-sm font-bold ${isLight ? 'text-slate-900' : 'text-white'} uppercase font-display`}>
+                        Live Supabase API Credentials
+                      </h3>
+                      <p className={`text-[11px] ${isLight ? 'text-slate-500' : 'text-zinc-400'}`}>
+                        Configure or update your Supabase project connection dynamically.
+                      </p>
+                    </div>
+                    <span className="px-2 py-1 bg-[#ff5500]/10 text-[#ff5500] rounded font-mono text-[10px]">
+                      Instant Cloud Sync
+                    </span>
+                  </div>
+
+                  <form onSubmit={handleSaveSupabaseConfig} className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <label className={`block font-bold ${isLight ? 'text-slate-700' : 'text-zinc-300'}`}>
+                          Supabase Project URL
+                        </label>
+                        <input
+                          type="url"
+                          required
+                          placeholder="https://your-project.supabase.co"
+                          value={customDbUrl}
+                          onChange={(e) => setCustomDbUrl(e.target.value)}
+                          className={`w-full p-2.5 rounded-xl border ${
+                            isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-[#181922] border-[#2c2f3d] text-white'
+                          } font-mono text-xs focus:border-[#ff5500] outline-none`}
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className={`block font-bold ${isLight ? 'text-slate-700' : 'text-zinc-300'}`}>
+                          Supabase API Key (Anon or Service Role Key)
+                        </label>
+                        <input
+                          type="password"
+                          required
+                          placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                          value={customDbKey}
+                          onChange={(e) => setCustomDbKey(e.target.value)}
+                          className={`w-full p-2.5 rounded-xl border ${
+                            isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-[#181922] border-[#2c2f3d] text-white'
+                          } font-mono text-xs focus:border-[#ff5500] outline-none`}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-2">
+                      <p className={`text-[11px] ${isLight ? 'text-slate-400' : 'text-zinc-500'}`}>
+                        Tip: You can find these in Supabase Dashboard → Settings → API.
+                      </p>
+                      <button
+                        type="submit"
+                        disabled={savingConfig}
+                        className="flex items-center gap-2 px-5 py-2.5 bg-[#ff5500] hover:bg-[#e04a00] text-black font-bold rounded-xl text-xs uppercase tracking-wider transition-colors shadow-md shadow-[#ff5500]/20"
+                      >
+                        {savingConfig ? (
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <ShieldCheck className="w-4 h-4" />
+                        )}
+                        <span>{savingConfig ? 'Connecting & Syncing...' : 'Save & Connect Database'}</span>
+                      </button>
+                    </div>
+                  </form>
                 </div>
 
                 {/* 3 Step Setup Guide */}

@@ -8,15 +8,21 @@ import { INITIAL_PRODUCTS, INITIAL_COMMUNITY_PHOTOS } from './src/data/mockProdu
 import { Product, Order, CommunityPhoto, AdminStats, ThemeMode, OrderStatus } from './src/types';
 import {
   isSupabaseConfigured,
+  getSupabaseConfig,
+  setRuntimeSupabaseCredentials,
   fetchSupabaseProducts,
   insertSupabaseProduct,
+  updateSupabaseProduct,
+  updateSupabaseProductStock,
   deleteSupabaseProduct,
   fetchSupabaseOrders,
   insertSupabaseOrder,
   updateSupabaseOrderStatus,
   fetchSupabaseCommunityPhotos,
   insertSupabaseCommunityPhoto,
-  checkSupabaseConnection
+  likeSupabaseCommunityPhoto,
+  checkSupabaseConnection,
+  seedSupabaseDatabase
 } from './src/lib/supabase';
 
 const app = express();
@@ -115,13 +121,71 @@ app.get('/api/health', (req: Request, res: Response) => {
   });
 });
 
-// Supabase Status
+// Supabase Status & Credentials Management
 app.get('/api/supabase/status', async (req: Request, res: Response) => {
   const status = await checkSupabaseConnection();
+  const config = getSupabaseConfig();
   res.json({
     success: true,
     isConfigured: isSupabaseConfigured(),
+    url: config.url || '',
+    hasKey: Boolean(config.key),
     ...status
+  });
+});
+
+app.post('/api/supabase/config', async (req: Request, res: Response) => {
+  const { url, key, autoSeed } = req.body;
+  if (!url || !key) {
+    return res.status(400).json({ success: false, message: 'Supabase URL and API Key are required' });
+  }
+
+  setRuntimeSupabaseCredentials(url, key);
+  const status = await checkSupabaseConnection();
+
+  let seedResult = null;
+  if (status.connected && autoSeed) {
+    seedResult = await seedSupabaseDatabase(products, communityPhotos);
+    // Refresh in-memory lists from Supabase
+    const dbProds = await fetchSupabaseProducts();
+    if (dbProds && dbProds.length > 0) {
+      products = dbProds;
+    }
+    const dbPhotos = await fetchSupabaseCommunityPhotos();
+    if (dbPhotos && dbPhotos.length > 0) {
+      communityPhotos = dbPhotos;
+    }
+  }
+
+  res.json({
+    success: true,
+    isConfigured: isSupabaseConfigured(),
+    ...status,
+    seedResult
+  });
+});
+
+// Seed Supabase Database On-Demand
+app.post('/api/supabase/seed', async (req: Request, res: Response) => {
+  if (!isSupabaseConfigured()) {
+    return res.status(400).json({ success: false, message: 'Supabase is not configured yet' });
+  }
+
+  const result = await seedSupabaseDatabase(products, communityPhotos);
+  const dbProds = await fetchSupabaseProducts();
+  if (dbProds && dbProds.length > 0) {
+    products = dbProds;
+  }
+  const dbPhotos = await fetchSupabaseCommunityPhotos();
+  if (dbPhotos && dbPhotos.length > 0) {
+    communityPhotos = dbPhotos;
+  }
+
+  res.json({
+    success: result.success,
+    message: result.message,
+    totalProducts: products.length,
+    totalPhotos: communityPhotos.length
   });
 });
 
@@ -171,6 +235,7 @@ app.get('/api/products', async (req: Request, res: Response) => {
     const dbProds = await fetchSupabaseProducts();
     if (dbProds && dbProds.length > 0) {
       result = dbProds;
+      products = dbProds; // Sync local cache
     } else {
       result = [...products];
     }
@@ -262,6 +327,7 @@ app.post('/api/products', async (req: Request, res: Response) => {
   if (isSupabaseConfigured()) {
     const saved = await insertSupabaseProduct(newProduct);
     if (saved) {
+      products.unshift(saved);
       return res.status(201).json({ success: true, product: saved });
     }
   }
@@ -270,16 +336,47 @@ app.post('/api/products', async (req: Request, res: Response) => {
   res.status(201).json({ success: true, product: newProduct });
 });
 
-app.put('/api/products/:id', (req: Request, res: Response) => {
-  const index = products.findIndex((p) => p.id === req.params.id);
-  if (index === -1) {
-    return res.status(404).json({ success: false, message: 'Product not found' });
+app.put('/api/products/:id', async (req: Request, res: Response) => {
+  const id = req.params.id;
+  const index = products.findIndex((p) => p.id === id);
+
+  if (isSupabaseConfigured()) {
+    await updateSupabaseProduct(id, req.body);
   }
-  products[index] = {
-    ...products[index],
-    ...req.body
-  };
-  res.json({ success: true, product: products[index] });
+
+  if (index !== -1) {
+    products[index] = {
+      ...products[index],
+      ...req.body,
+      stockQuantity: req.body.stockQuantity !== undefined ? Number(req.body.stockQuantity) : products[index].stockQuantity,
+      inStock: req.body.stockQuantity !== undefined ? Number(req.body.stockQuantity) > 0 : products[index].inStock
+    };
+    return res.json({ success: true, product: products[index] });
+  }
+
+  res.json({ success: true, product: req.body });
+});
+
+app.patch('/api/products/:id/stock', async (req: Request, res: Response) => {
+  const id = req.params.id;
+  const { stockQuantity } = req.body;
+  const qty = Number(stockQuantity);
+
+  if (isNaN(qty)) {
+    return res.status(400).json({ success: false, message: 'Invalid stock number' });
+  }
+
+  if (isSupabaseConfigured()) {
+    await updateSupabaseProductStock(id, qty);
+  }
+
+  const prod = products.find((p) => p.id === id);
+  if (prod) {
+    prod.stockQuantity = qty;
+    prod.inStock = qty > 0;
+  }
+
+  res.json({ success: true, id, stockQuantity: qty, inStock: qty > 0 });
 });
 
 app.delete('/api/products/:id', async (req: Request, res: Response) => {
@@ -537,8 +634,13 @@ app.post('/api/community', async (req: Request, res: Response) => {
   res.status(201).json({ success: true, photo: newPhoto });
 });
 
-app.post('/api/community/:id/like', (req: Request, res: Response) => {
-  const photo = communityPhotos.find((p) => p.id === req.params.id);
+app.post('/api/community/:id/like', async (req: Request, res: Response) => {
+  const id = req.params.id;
+  if (isSupabaseConfigured()) {
+    await likeSupabaseCommunityPhoto(id);
+  }
+
+  const photo = communityPhotos.find((p) => p.id === id);
   if (!photo) {
     return res.status(404).json({ success: false, message: 'Photo not found' });
   }

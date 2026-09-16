@@ -21,21 +21,26 @@ const getEnvVar = (key: string): string => {
   return '';
 };
 
-const supabaseUrl =
-  getEnvVar('SUPABASE_URL') ||
-  getEnvVar('VITE_SUPABASE_URL') ||
-  '';
-
-const supabaseKey =
-  getEnvVar('SUPABASE_SERVICE_ROLE_KEY') ||
-  getEnvVar('SUPABASE_ANON_KEY') ||
-  getEnvVar('VITE_SUPABASE_ANON_KEY') ||
-  '';
-
+// Dynamic credentials support
+let runtimeSupabaseUrl = '';
+let runtimeSupabaseKey = '';
 let supabaseClientInstance: SupabaseClient | null = null;
 
+export const setRuntimeSupabaseCredentials = (url: string, key: string) => {
+  runtimeSupabaseUrl = url.trim();
+  runtimeSupabaseKey = key.trim();
+  supabaseClientInstance = null; // reset client instance so it rebuilds
+};
+
+export const getSupabaseConfig = () => {
+  const url = runtimeSupabaseUrl || getEnvVar('SUPABASE_URL') || getEnvVar('VITE_SUPABASE_URL') || '';
+  const key = runtimeSupabaseKey || getEnvVar('SUPABASE_SERVICE_ROLE_KEY') || getEnvVar('SUPABASE_ANON_KEY') || getEnvVar('VITE_SUPABASE_ANON_KEY') || '';
+  return { url, key };
+};
+
 export const isSupabaseConfigured = (): boolean => {
-  return Boolean(supabaseUrl && supabaseKey && supabaseUrl.startsWith('http'));
+  const { url, key } = getSupabaseConfig();
+  return Boolean(url && key && url.startsWith('http'));
 };
 
 export const getSupabaseClient = (): SupabaseClient | null => {
@@ -44,8 +49,9 @@ export const getSupabaseClient = (): SupabaseClient | null => {
   }
 
   if (!supabaseClientInstance) {
+    const { url, key } = getSupabaseConfig();
     try {
-      supabaseClientInstance = createClient(supabaseUrl, supabaseKey, {
+      supabaseClientInstance = createClient(url, key, {
         auth: {
           persistSession: true,
           autoRefreshToken: true
@@ -67,11 +73,12 @@ export async function checkSupabaseConnection(): Promise<{
   url: string;
   message: string;
 }> {
+  const { url } = getSupabaseConfig();
   if (!isSupabaseConfigured()) {
     return {
       connected: false,
-      url: supabaseUrl || 'Not configured',
-      message: 'SUPABASE_URL and SUPABASE_ANON_KEY are not set in environment.'
+      url: url || 'Not configured',
+      message: 'SUPABASE_URL and SUPABASE_ANON_KEY are not set.'
     };
   }
 
@@ -83,20 +90,20 @@ export async function checkSupabaseConnection(): Promise<{
     if (error && error.code !== 'PGRST116') {
       return {
         connected: false,
-        url: supabaseUrl,
-        message: `Connected to Supabase URL, but database error: ${error.message}. Please run supabase/schema.sql.`
+        url,
+        message: `Connected to Supabase URL, but database error: ${error.message}. Please run supabase/schema.sql in the Supabase SQL editor.`
       };
     }
 
     return {
       connected: true,
-      url: supabaseUrl,
-      message: 'Supabase Live Database connected successfully.'
+      url,
+      message: 'Supabase Live PostgreSQL database connected successfully.'
     };
   } catch (err: any) {
     return {
       connected: false,
-      url: supabaseUrl,
+      url,
       message: err?.message || 'Connection failed'
     };
   }
@@ -136,7 +143,7 @@ export async function fetchSupabaseProducts(): Promise<Product[] | null> {
       image: row.image,
       secondaryImages: Array.isArray(row.secondary_images) ? row.secondary_images : [],
       inStock: row.in_stock ?? true,
-      stockQuantity: Number(row.stock_quantity || 10),
+      stockQuantity: Number(row.stock_quantity ?? 10),
       sku: row.sku || `018-${row.id}`,
       tag: row.tag,
       isNew: row.is_new ?? false,
@@ -169,7 +176,7 @@ export async function insertSupabaseProduct(product: Partial<Product>): Promise<
       image: product.image,
       secondary_images: product.secondaryImages || [],
       in_stock: product.inStock ?? true,
-      stock_quantity: product.stockQuantity || 10,
+      stock_quantity: product.stockQuantity ?? 10,
       sku: product.sku || `018-NW-${Math.floor(100 + Math.random() * 900)}`,
       tag: product.tag || 'NEW DROP',
       is_new: true,
@@ -207,6 +214,58 @@ export async function insertSupabaseProduct(product: Partial<Product>): Promise<
   } catch (e) {
     console.warn('Supabase insert product failed:', e);
     return null;
+  }
+}
+
+export async function updateSupabaseProduct(id: string, updates: Partial<Product>): Promise<boolean> {
+  const client = getSupabaseClient();
+  if (!client) return false;
+
+  try {
+    const dbPayload: any = {};
+    if (updates.title !== undefined) dbPayload.title = updates.title;
+    if (updates.category !== undefined) dbPayload.category = updates.category;
+    if (updates.price !== undefined) dbPayload.price = Number(updates.price);
+    if (updates.originalPrice !== undefined) dbPayload.original_price = updates.originalPrice ? Number(updates.originalPrice) : null;
+    if (updates.description !== undefined) dbPayload.description = updates.description;
+    if (updates.image !== undefined) dbPayload.image = updates.image;
+    if (updates.inStock !== undefined) dbPayload.in_stock = updates.inStock;
+    if (updates.stockQuantity !== undefined) {
+      dbPayload.stock_quantity = Number(updates.stockQuantity);
+      dbPayload.in_stock = Number(updates.stockQuantity) > 0;
+    }
+    if (updates.tag !== undefined) dbPayload.tag = updates.tag;
+    if (updates.sizes !== undefined) dbPayload.sizes = updates.sizes;
+    if (updates.colors !== undefined) dbPayload.colors = updates.colors;
+
+    const { error } = await client.from('products').update(dbPayload).eq('id', id);
+    if (error) {
+      console.warn('Supabase update product error:', error.message);
+      return false;
+    }
+    return true;
+  } catch (e) {
+    console.warn('Supabase update product failed:', e);
+    return false;
+  }
+}
+
+export async function updateSupabaseProductStock(id: string, newStock: number): Promise<boolean> {
+  const client = getSupabaseClient();
+  if (!client) return false;
+
+  try {
+    const { error } = await client
+      .from('products')
+      .update({
+        stock_quantity: newStock,
+        in_stock: newStock > 0
+      })
+      .eq('id', id);
+
+    return !error;
+  } catch {
+    return false;
   }
 }
 
@@ -364,8 +423,8 @@ export async function insertSupabaseCommunityPhoto(photo: CommunityPhoto): Promi
       caption: photo.caption,
       image_url: photo.imageUrl,
       product_tagged: photo.productTagged,
-      likes: photo.likes,
-      source: photo.source,
+      likes: photo.likes || 0,
+      source: photo.source || 'gallery',
       created_at: photo.createdAt || new Date().toISOString()
     };
 
@@ -377,5 +436,114 @@ export async function insertSupabaseCommunityPhoto(photo: CommunityPhoto): Promi
     return photo;
   } catch {
     return null;
+  }
+}
+
+export async function likeSupabaseCommunityPhoto(photoId: string): Promise<boolean> {
+  const client = getSupabaseClient();
+  if (!client) return false;
+
+  try {
+    // Read current likes
+    const { data } = await client.from('community_photos').select('likes').eq('id', photoId).single();
+    const currentLikes = Number(data?.likes || 0);
+
+    const { error } = await client
+      .from('community_photos')
+      .update({ likes: currentLikes + 1 })
+      .eq('id', photoId);
+
+    return !error;
+  } catch {
+    return false;
+  }
+}
+
+// Auto-seed Supabase database with 018 collection if products table is empty
+export async function seedSupabaseDatabase(initialProducts: Product[], initialPhotos: CommunityPhoto[]): Promise<{
+  success: boolean;
+  insertedProducts: number;
+  insertedPhotos: number;
+  message: string;
+}> {
+  const client = getSupabaseClient();
+  if (!client) {
+    return { success: false, insertedProducts: 0, insertedPhotos: 0, message: 'Supabase client not configured' };
+  }
+
+  try {
+    let insertedProdsCount = 0;
+    let insertedPhotosCount = 0;
+
+    // Check existing products
+    const { count: prodCount } = await client.from('products').select('*', { count: 'exact', head: true });
+
+    if (prodCount === 0 || prodCount === null) {
+      const prodRows = initialProducts.map((p) => ({
+        id: p.id,
+        title: p.title,
+        category: p.category,
+        price: p.price,
+        original_price: p.originalPrice || null,
+        rating: p.rating || 5.0,
+        reviews_count: p.reviewsCount || 1,
+        sizes: p.sizes,
+        colors: p.colors,
+        description: p.description,
+        features: p.features || [],
+        image: p.image,
+        secondary_images: p.secondaryImages || [],
+        in_stock: p.inStock ?? true,
+        stock_quantity: p.stockQuantity ?? 15,
+        sku: p.sku || `018-${p.id}`,
+        tag: p.tag || 'NEW DROP',
+        is_new: p.isNew ?? false,
+        is_bestseller: p.isBestseller ?? false,
+        created_at: p.createdAt || new Date().toISOString()
+      }));
+
+      const { error: prodErr } = await client.from('products').insert(prodRows);
+      if (!prodErr) {
+        insertedProdsCount = prodRows.length;
+      } else {
+        console.warn('Supabase product seed notice:', prodErr.message);
+      }
+    }
+
+    // Check existing photos
+    const { count: photoCount } = await client.from('community_photos').select('*', { count: 'exact', head: true });
+    if (photoCount === 0 || photoCount === null) {
+      const photoRows = initialPhotos.map((photo) => ({
+        id: photo.id,
+        user_name: photo.userName,
+        handle: photo.handle,
+        location: photo.location,
+        caption: photo.caption,
+        image_url: photo.imageUrl,
+        product_tagged: photo.productTagged,
+        likes: photo.likes || 0,
+        source: photo.source || 'gallery',
+        created_at: photo.createdAt || new Date().toISOString()
+      }));
+
+      const { error: photoErr } = await client.from('community_photos').insert(photoRows);
+      if (!photoErr) {
+        insertedPhotosCount = photoRows.length;
+      }
+    }
+
+    return {
+      success: true,
+      insertedProducts: insertedProdsCount,
+      insertedPhotos: insertedPhotosCount,
+      message: `Database verified. Seeded ${insertedProdsCount} products and ${insertedPhotosCount} street looks.`
+    };
+  } catch (err: any) {
+    return {
+      success: false,
+      insertedProducts: 0,
+      insertedPhotos: 0,
+      message: err?.message || 'Database seeding error'
+    };
   }
 }
