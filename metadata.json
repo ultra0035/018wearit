@@ -1,0 +1,10 @@
+{
+  "name": "018 Bokone Bophirima",
+  "description": "018 Bokone Bophirima - South African luxury knitwear, signature streetwear & lifestyle brand from Klerksdorp, North West.",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
