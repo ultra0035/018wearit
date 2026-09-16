@@ -2,31 +2,226 @@
 
 @layer base {
   :root {
+    --bg-page: #0c0d0f;
+    --bg-surface: #121316;
+    --bg-card: #15161b;
+    --bg-card-hover: #1c1d24;
+    --bg-input: #181920;
+    --border-subtle: #22242e;
+    --border-strong: #2e303e;
+    --text-primary: #ffffff;
+    --text-secondary: #9ca3af;
+    --text-muted: #6b7280;
     --brand-orange: #ff5500;
-    --brand-orange-hover: #e04a00;
-    --brand-black: #0c0d0e;
-    --brand-charcoal: #151619;
-    --brand-card: #1c1d22;
-    --brand-border: #2a2c33;
-    --brand-light-bg: #f5f6f8;
-    --brand-light-surface: #ffffff;
-    --brand-light-card: #ffffff;
-    --brand-light-border: #e2e4e9;
-    --brand-light-text: #121316;
-    --brand-light-muted: #64748b;
+  }
+
+  html.light, .light {
+    --bg-page: #f8fafc;
+    --bg-surface: #ffffff;
+    --bg-card: #ffffff;
+    --bg-card-hover: #f1f5f9;
+    --bg-input: #ffffff;
+    --border-subtle: #e2e8f0;
+    --border-strong: #cbd5e1;
+    --text-primary: #0f172a;
+    --text-secondary: #334155;
+    --text-muted: #64748b;
+    --brand-orange: #ff5500;
   }
 
   body {
     font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: var(--bg-page);
+    color: var(--text-secondary);
     transition: background-color 0.25s ease, color 0.25s ease;
   }
 
-  h1, h2, h3, .font-display {
+  h1, h2, h3, h4, .font-display {
     font-family: 'Cabinet Grotesk', 'Space Grotesk', 'Plus Jakarta Sans', sans-serif;
   }
 }
 
-/* Custom scrollbar */
+/* ==========================================================================
+   LIGHT MODE DESIGN SYSTEM
+   High contrast, crisp typography, clean cards, slate borders & preserved 018 Orange
+   ========================================================================== */
+
+/* 1. Base Canvas in Light Mode */
+html.light body,
+.light body,
+.light main {
+  background-color: #f8fafc !important;
+  color: #334155 !important;
+}
+
+/* 2. Header and Nav in Light Mode */
+.light header {
+  background-color: rgba(255, 255, 255, 0.96) !important;
+  border-bottom-color: #e2e8f0 !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05) !important;
+}
+
+.light header div[class*="bg-[#121316]"] {
+  background-color: #f1f5f9 !important;
+  border-bottom-color: #e2e8f0 !important;
+}
+
+/* 3. Surface & Card Backgrounds in Light Mode */
+.light .bg-\[\#0c0d0e\],
+.light .bg-\[\#0c0d0f\],
+.light .bg-\[\#0d0e11\],
+.light .bg-\[\#0d0e12\],
+.light .bg-\[\#090a0c\],
+.light .bg-\[\#0a0b0d\],
+.light .bg-\[\#08090b\] {
+  background-color: #f8fafc !important;
+}
+
+.light .bg-\[\#141519\],
+.light .bg-\[\#14151a\],
+.light .bg-\[\#14151b\],
+.light .bg-\[\#15161a\],
+.light .bg-\[\#15161b\],
+.light .bg-\[\#16171d\],
+.light .bg-\[\#121316\],
+.light .bg-\[\#171820\],
+.light .bg-\[\#181920\],
+.light .bg-\[\#1c1d24\],
+.light .bg-\[\#20222a\],
+.light .bg-\[\#191a21\],
+.light .bg-zinc-900 {
+  background-color: #ffffff !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.04) !important;
+}
+
+.light .bg-\[\#18191e\],
+.light .bg-\[\#1c1d22\],
+.light .bg-\[\#23252c\],
+.light .bg-\[\#202227\],
+.light .bg-\[\#111216\],
+.light .bg-zinc-800,
+.light .bg-zinc-950 {
+  background-color: #f1f5f9 !important;
+}
+
+/* 4. Borders in Light Mode */
+.light .border-\[\#1c1d22\],
+.light .border-\[\#1a1b20\],
+.light .border-\[\#1f2026\],
+.light .border-\[\#1f2129\],
+.light .border-\[\#1e2029\],
+.light .border-\[\#21232c\],
+.light .border-\[\#21232d\],
+.light .border-\[\#23252e\],
+.light .border-\[\#23252d\],
+.light .border-\[\#232530\],
+.light .border-\[\#242633\],
+.light .border-\[\#252733\],
+.light .border-\[\#26282f\],
+.light .border-\[\#262835\],
+.light .border-\[\#272932\],
+.light .border-\[\#272935\],
+.light .border-\[\#282a33\],
+.light .border-\[\#2a2c33\],
+.light .border-\[\#2a2c38\],
+.light .border-\[\#2c2e3c\],
+.light .border-\[\#2d2f3c\],
+.light .border-\[\#2e3038\],
+.light .border-\[\#2e3039\],
+.light .border-zinc-800,
+.light .border-zinc-700 {
+  border-color: #e2e8f0 !important;
+}
+
+/* 5. Typography Contrast in Light Mode */
+.light h1,
+.light h2,
+.light h3,
+.light h4,
+.light h5,
+.light h6 {
+  color: #0f172a !important;
+}
+
+.light h4.text-white,
+.light h3.text-white,
+.light h2.text-white,
+.light h1.text-white,
+.light span.text-white,
+.light p.text-white,
+.light div.text-white:not([class*="bg-black"]):not([class*="bg-emerald"]):not([class*="bg-purple"]) {
+  color: #0f172a !important;
+}
+
+.light .text-zinc-100,
+.light .text-zinc-200,
+.light .text-zinc-300 {
+  color: #1e293b !important;
+}
+
+.light .text-zinc-400,
+.light .text-zinc-500 {
+  color: #64748b !important;
+}
+
+/* 6. Strict Orange and Contrast Protections */
+.light .text-\[\#ff5500\],
+.light .text-orange-500,
+.light .text-orange-600 {
+  color: #ff5500 !important;
+}
+
+.light .bg-\[\#ff5500\],
+.light .bg-orange-500 {
+  background-color: #ff5500 !important;
+  color: #000000 !important;
+}
+
+.light .bg-\[\#ff5500\] * {
+  color: #000000 !important;
+}
+
+/* 7. Retain Image Overlay Readability */
+.light .aspect-square .text-white,
+.light .aspect-\[4\/5\] .text-white,
+.light .aspect-\[4\/5\] h2,
+.light .aspect-\[4\/5\] span,
+.light .aspect-\[4\/5\] p,
+.light [class*="bg-black/"] .text-white,
+.light [class*="bg-black/"] span,
+.light .absolute.bottom-5 .text-white,
+.light .absolute.bottom-3 .text-white {
+  color: #ffffff !important;
+}
+
+/* 8. Modals Backdrop */
+.light .bg-black\/85,
+.light .bg-black\/80,
+.light .bg-black\/75,
+.light .bg-black\/60 {
+  background-color: rgba(15, 23, 42, 0.65) !important;
+}
+
+/* 9. Category Pills & Interactive Elements */
+.light button[class*="bg-[#18191e]"] {
+  background-color: #f1f5f9 !important;
+  color: #334155 !important;
+  border-color: #e2e8f0 !important;
+}
+
+.light button[class*="bg-[#18191e]"]:hover {
+  background-color: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+/* 10. Footer in Light Mode */
+.light footer {
+  background-color: #f1f5f9 !important;
+  border-top-color: #e2e8f0 !important;
+  color: #475569 !important;
+}
+
+/* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -35,7 +230,7 @@
   background: #111215;
 }
 .light ::-webkit-scrollbar-track {
-  background: #f1f2f4;
+  background: #f1f5f9;
 }
 ::-webkit-scrollbar-thumb {
   background: #2a2c33;
@@ -47,5 +242,3 @@
 ::-webkit-scrollbar-thumb:hover {
   background: #ff5500;
 }
-
-

@@ -1,5 +1,8 @@
 import express, { Request, Response } from 'express';
 import crypto from 'crypto';
+import path from 'path';
+import fs from 'fs';
+
 import { INITIAL_PRODUCTS, INITIAL_COMMUNITY_PHOTOS } from '../src/data/mockProducts';
 import { Product, Order, CommunityPhoto, AdminStats, OrderStatus, ThemeMode } from '../src/types';
 import {
@@ -66,6 +69,22 @@ app.get('/api/supabase/status', async (req: Request, res: Response) => {
     isConfigured: isSupabaseConfigured(),
     ...status
   });
+});
+
+// Direct Supabase SQL Schema Endpoint
+app.get('/api/supabase/sql', (req: Request, res: Response) => {
+  try {
+    const sqlPath = path.join(process.cwd(), 'supabase', 'schema.sql');
+    if (fs.existsSync(sqlPath)) {
+      const sqlContent = fs.readFileSync(sqlPath, 'utf8');
+      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      res.send(sqlContent);
+    } else {
+      res.status(404).json({ error: 'schema.sql not found' });
+    }
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to read schema.sql' });
+  }
 });
 
 // Settings & Theme

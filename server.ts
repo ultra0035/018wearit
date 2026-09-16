@@ -1,7 +1,9 @@
 import express, { Request, Response } from 'express';
 import path from 'path';
+import fs from 'fs';
 import crypto from 'crypto';
 import { createServer as createViteServer } from 'vite';
+
 import { INITIAL_PRODUCTS, INITIAL_COMMUNITY_PHOTOS } from './src/data/mockProducts';
 import { Product, Order, CommunityPhoto, AdminStats, ThemeMode, OrderStatus } from './src/types';
 import {
@@ -121,6 +123,22 @@ app.get('/api/supabase/status', async (req: Request, res: Response) => {
     isConfigured: isSupabaseConfigured(),
     ...status
   });
+});
+
+// Serve Supabase schema.sql file directly
+app.get('/api/supabase/sql', (req: Request, res: Response) => {
+  try {
+    const sqlPath = path.join(process.cwd(), 'supabase', 'schema.sql');
+    if (fs.existsSync(sqlPath)) {
+      const sqlContent = fs.readFileSync(sqlPath, 'utf8');
+      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      res.send(sqlContent);
+    } else {
+      res.status(404).json({ error: 'schema.sql not found' });
+    }
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to read schema.sql' });
+  }
 });
 
 // Store Settings & Theme

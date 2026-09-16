@@ -8,7 +8,7 @@ import { CartDrawer } from './components/CartDrawer';
 import { CheckoutModal } from './components/CheckoutModal';
 import { OrderSuccessModal } from './components/OrderSuccessModal';
 import { PhotoUploadModal } from './components/PhotoUploadModal';
-import { AdminInventoryModal } from './components/AdminInventoryModal';
+import { AdminDashboard } from './components/AdminDashboard';
 import { QuickSearchModal } from './components/QuickSearchModal';
 import { FilterDrawer } from './components/FilterDrawer';
 import { CommunitySection } from './components/CommunitySection';
@@ -390,7 +390,7 @@ export default function App() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#0c0d0f] text-zinc-100 flex flex-col font-sans selection:bg-[#ff5500] selection:text-black antialiased">
+    <div className={`min-h-screen ${theme === 'light' ? 'bg-[#f8fafc] text-slate-900' : 'bg-[#0c0d0f] text-zinc-100'} flex flex-col font-sans selection:bg-[#ff5500] selection:text-black antialiased transition-colors duration-200`}>
       {/* Floating Toast Notification */}
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 bg-[#16171d] border border-[#ff5500] text-white text-xs font-semibold px-4 py-3 rounded-xl shadow-2xl shadow-black/80 flex items-center gap-2 animate-bounce">
@@ -566,12 +566,13 @@ export default function App() {
         onPhotoUploaded={handlePhotoUploaded}
       />
 
-      {/* Admin Store Inventory & Orders Management Modal */}
-      <AdminInventoryModal
+      {/* Admin Store Inventory & Orders Management Dashboard */}
+      <AdminDashboard
         isOpen={isAdminOpen}
         onClose={() => setIsAdminOpen(false)}
         products={products}
         orders={orders}
+        communityPhotos={communityPhotos}
         onAddProduct={handleAdminAddProduct}
         onUpdateOrderStatus={handleAdminUpdateOrderStatus}
         onDeleteProduct={handleAdminDeleteProduct}

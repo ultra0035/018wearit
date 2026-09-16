@@ -1,14 +1,19 @@
 -- ==============================================================================
 -- 018 BOKONE BOPHIRIMA • SUPABASE DATABASE SCHEMA & SEED DATA
--- Luxury South African Knitwear & Streetwear Store
--- Location: Klerksdorp, North West Province (018)
+-- Luxury South African Knitwear & Streetwear Store (018 Klerksdorp, North West)
 -- ==============================================================================
 
--- Enable UUID extension
+-- 1. Enable Required Extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- 1. PRODUCTS TABLE
-CREATE TABLE IF NOT EXISTS public.products (
+-- 2. Drop existing tables if re-running or migrating to guarantee clean state
+DROP TABLE IF EXISTS public.products CASCADE;
+DROP TABLE IF EXISTS public.orders CASCADE;
+DROP TABLE IF EXISTS public.community_photos CASCADE;
+DROP TABLE IF EXISTS public.store_settings CASCADE;
+
+-- 3. PRODUCTS TABLE
+CREATE TABLE public.products (
     id TEXT PRIMARY KEY,
     title TEXT NOT NULL,
     category TEXT NOT NULL,
@@ -32,8 +37,8 @@ CREATE TABLE IF NOT EXISTS public.products (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 2. ORDERS TABLE
-CREATE TABLE IF NOT EXISTS public.orders (
+-- 4. ORDERS TABLE (Fulfillment & PayFast checkout)
+CREATE TABLE public.orders (
     id TEXT PRIMARY KEY,
     order_number TEXT UNIQUE NOT NULL,
     customer JSONB NOT NULL,
@@ -52,8 +57,8 @@ CREATE TABLE IF NOT EXISTS public.orders (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 3. COMMUNITY STREET LOOKS TABLE
-CREATE TABLE IF NOT EXISTS public.community_photos (
+-- 5. COMMUNITY STREET LOOKS TABLE (UGC & Looks)
+CREATE TABLE public.community_photos (
     id TEXT PRIMARY KEY,
     user_name TEXT NOT NULL,
     handle TEXT NOT NULL,
@@ -66,8 +71,8 @@ CREATE TABLE IF NOT EXISTS public.community_photos (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 4. STORE SETTINGS TABLE
-CREATE TABLE IF NOT EXISTS public.store_settings (
+-- 6. STORE SETTINGS TABLE
+CREATE TABLE public.store_settings (
     id TEXT PRIMARY KEY DEFAULT 'global_config',
     store_name TEXT DEFAULT '018 Bokone Bophirima',
     theme_mode TEXT DEFAULT 'dark',
@@ -78,45 +83,43 @@ CREATE TABLE IF NOT EXISTS public.store_settings (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- INDEXES FOR PERFORMANCE
-CREATE INDEX IF NOT EXISTS idx_products_category ON public.products(category);
-CREATE INDEX IF NOT EXISTS idx_products_price ON public.products(price);
-CREATE INDEX IF NOT EXISTS idx_products_instock ON public.products(in_stock);
-CREATE INDEX IF NOT EXISTS idx_orders_ordernumber ON public.orders(order_number);
-CREATE INDEX IF NOT EXISTS idx_orders_status ON public.orders(status);
-CREATE INDEX IF NOT EXISTS idx_community_created ON public.community_photos(created_at DESC);
+-- 7. PERFORMANCE INDEXES
+CREATE INDEX idx_products_category ON public.products(category);
+CREATE INDEX idx_products_price ON public.products(price);
+CREATE INDEX idx_products_instock ON public.products(in_stock);
+CREATE INDEX idx_orders_ordernumber ON public.orders(order_number);
+CREATE INDEX idx_orders_status ON public.orders(status);
+CREATE INDEX idx_community_created ON public.community_photos(created_at DESC);
 
--- ==============================================================================
--- ROW LEVEL SECURITY (RLS) POLICIES
--- ==============================================================================
+-- 8. ROW LEVEL SECURITY (RLS) POLICIES
 ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.community_photos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.store_settings ENABLE ROW LEVEL SECURITY;
 
--- Products: Everyone can read; Authenticated or Anon can insert/update for demo
+-- Products Policies
 CREATE POLICY "Public Read Products" ON public.products FOR SELECT USING (true);
 CREATE POLICY "Public Insert Products" ON public.products FOR INSERT WITH CHECK (true);
 CREATE POLICY "Public Update Products" ON public.products FOR UPDATE USING (true);
 CREATE POLICY "Public Delete Products" ON public.products FOR DELETE USING (true);
 
--- Orders: Everyone can create order, everyone can query by order_number
+-- Orders Policies
 CREATE POLICY "Public Read Orders" ON public.orders FOR SELECT USING (true);
 CREATE POLICY "Public Insert Orders" ON public.orders FOR INSERT WITH CHECK (true);
 CREATE POLICY "Public Update Orders" ON public.orders FOR UPDATE USING (true);
+CREATE POLICY "Public Delete Orders" ON public.orders FOR DELETE USING (true);
 
--- Community Photos: Public view & submit
+-- Community Photos Policies
 CREATE POLICY "Public Read Community" ON public.community_photos FOR SELECT USING (true);
 CREATE POLICY "Public Insert Community" ON public.community_photos FOR INSERT WITH CHECK (true);
 CREATE POLICY "Public Update Community" ON public.community_photos FOR UPDATE USING (true);
+CREATE POLICY "Public Delete Community" ON public.community_photos FOR DELETE USING (true);
 
--- Settings: Public view & update
+-- Settings Policies
 CREATE POLICY "Public Read Settings" ON public.store_settings FOR SELECT USING (true);
 CREATE POLICY "Public Update Settings" ON public.store_settings FOR UPDATE USING (true);
 
--- ==============================================================================
--- SEED INITIAL CATALOG DATA (018 BOKONE BOPHIRIMA)
--- ==============================================================================
+-- 9. SEED INITIAL PRODUCTS (018 BOKONE BOPHIRIMA COLLECTION)
 INSERT INTO public.products (
     id, title, category, price, original_price, rating, reviews_count, sizes, colors, description, features, image, secondary_images, in_stock, stock_quantity, sku, tag, is_new, is_bestseller, created_at
 ) VALUES
@@ -207,10 +210,9 @@ INSERT INTO public.products (
     true,
     true,
     NOW() - INTERVAL '4 days'
-)
-ON CONFLICT (id) DO NOTHING;
+);
 
--- SEED COMMUNITY PHOTOS
+-- 10. SEED COMMUNITY STREETWEAR LOOKS
 INSERT INTO public.community_photos (id, user_name, handle, location, caption, image_url, product_tagged, likes, source, created_at)
 VALUES
 (
@@ -236,10 +238,8 @@ VALUES
     212,
     'curated',
     NOW() - INTERVAL '1 day'
-)
-ON CONFLICT (id) DO NOTHING;
+);
 
--- SEED DEFAULT SETTINGS
+-- 11. SEED DEFAULT STORE CONFIG
 INSERT INTO public.store_settings (id, store_name, theme_mode, free_shipping_threshold)
-VALUES ('global_config', '018 Bokone Bophirima', 'dark', 999.00)
-ON CONFLICT (id) DO NOTHING;
+VALUES ('global_config', '018 Bokone Bophirima', 'dark', 999.00);
